@@ -1,0 +1,665 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ───────────────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  DRIVER
+  MANAGER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum DriverStatus {
+  AVAILABLE
+  ON_TRIP
+  OFF_DUTY
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+}
+
+enum TripStatus {
+  SCHEDULED
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TripType {
+  OUT
+  IN
+}
+
+enum MaintenanceType {
+  OIL_CHANGE
+  INSPECTION
+  REPAIR
+  SERVICE
+  TIRE_REPLACEMENT
+  BRAKE_SERVICE
+}
+
+enum TripImageType {
+  BEFORE
+  AFTER
+  DURING
+  DOCUMENTATION
+}
+
+enum MaintenanceStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// CORE USER & AUTH MODELS
+// ───────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id         String     @id @default(cuid())
+  email      String     @unique
+  password   String
+  name       String
+  phone      String     @unique
+  role       UserRole
+  status     UserStatus @default(ACTIVE)
+  avatar     String?
+  department String?
+
+  // Relationships
+  driver           Driver?
+  permissions      Permission[]
+  tripAssignments  TripAssignment[]
+  auditLogs        AuditLog[]       @relation("UserAuditLogs")
+  createdAuditLogs AuditLog[]       @relation("CreatedByUser")
+
+  // Timestamps
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  lastLogin     DateTime?
+  notifications Notification[]
+  exportLogs    ExportLog[]
+
+  @@index([role])
+  @@index([status])
+  @@index([email])
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// PERMISSIONS & ROLE-BASED ACCESS CONTROL
+// ───────────────────────────────────────────────────────────────────────────────
+
+model Permission {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Page/Feature access
+  canAccessDashboard   Boolean @default(false)
+  canAccessTrips       Boolean @default(false)
+  canAccessDrivers     Boolean @default(false)
+  canAccessVehicles    Boolean @default(false)
+  canAccessMaintenance Boolean @default(false)
+  canAccessAgencies    Boolean @default(false)
+  canAccessHotels      Boolean @default(false)
+  canAccessReports     Boolean @default(false)
+  canAccessUsers       Boolean @default(false)
+  canAccessProfile     Boolean @default(false)
+  canAccessCalendar    Boolean @default(false)
+
+  // Administrative permissions
+  canManageUsers       Boolean @default(false)
+  canManageRoles       Boolean @default(false)
+  canManagePermissions Boolean @default(false)
+  canExportData        Boolean @default(false)
+  canDeleteData        Boolean @default(false)
+  canViewReports       Boolean @default(false)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId])
+  @@index([userId])
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// DRIVER MODEL
+// ───────────────────────────────────────────────────────────────────────────────
+
+model Driver {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Profile info
+  status        DriverStatus @default(AVAILABLE)
+  rating        Float        @default(0)
+  licenseNumber String       @unique
+  licenseExpiry DateTime
+
+  // Statistics
+  totalTrips    Int   @default(0)
+  totalKm       Int   @default(0)
+  averageRating Float @default(0)
+
+  // Relationships
+  trips              Trip[]
+  vehicleAssignments VehicleAssignment[]
+  auditLogs          AuditLog[]
+
+  // Soft delete & timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([userId])
+  @@index([status])
+  @@index([licenseExpiry])
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// VEHICLE MODEL
+// ───────────────────────────────────────────────────────────────────────────────
+
+model Vehicle {
+  id String @id @default(cuid())
+
+  // Basic info
+  model              String
+  plate              String   @unique
+  vin                String   @unique
+  registrationExpiry DateTime
+
+  // Capacity & usage
+  capacity Int
+  kmUsage  Int           @default(0)
+  status   VehicleStatus @default(AVAILABLE)
+
+  // Financial info
+  monthlyRent Float
+  salik       Float   @default(0)
+  owner       String?
+
+  // Maintenance tracking
+  lastMaintenance     DateTime?
+  nextMaintenanceDate DateTime?
+
+  // Relationships
+  trips       Trip[]
+  assignments VehicleAssignment[]
+  maintenance MaintenanceRecord[]
+
+  // Soft delete & timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([plate])
+  @@index([status])
+  @@index([registrationExpiry])
+  @@index([kmUsage])
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// VEHICLE ASSIGNMENT (Many-to-Many with temporal data)
+// ───────────────────────────────────────────────────────────────────────────────
+
+model VehicleAssignment {
+  id        String  @id @default(cuid())
+  vehicleId String
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  driverId String
+  driver   Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  assignedAt   DateTime  @default(now())
+  unassignedAt DateTime?
+  isActive     Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([vehicleId, driverId, unassignedAt])
+  @@index([vehicleId])
+  @@index([driverId])
+  @@index([isActive])
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// AGENCY MODEL
+// ───────────────────────────────────────────────────────────────────────────────
+
+model Agency {
+  id String @id @default(cuid())
+
+  // Contact info
+  name          String  @unique
+  contactPerson String
+  phone         String
+  email         String?
+  address       String?
+  city          String?
+
+  // Statistics
+  totalTrips      Int   @default(0)
+  totalPassengers Int   @default(0)
+  totalRevenue    Float @default(0)
+
+  // Relationships
+  trips Trip[]
+
+  // Soft delete & timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([name])
+  @@index([city])
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// HOTEL MODEL
+// ───────────────────────────────────────────────────────────────────────────────
+
+model Hotel {
+  id String @id @default(cuid())
+
+  // Basic info
+  name    String  @unique
+  address String
+  city    String
+  phone   String
+  email   String?
+
+  // Statistics
+  totalTrips      Int @default(0)
+  totalPassengers Int @default(0)
+
+  // Relationships
+  trips Trip[]
+
+  // Soft delete & timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([name])
+  @@index([city])
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// TRIP MODEL (Core business entity)
+// ───────────────────────────────────────────────────────────────────────────────
+
+model Trip {
+  id String @id @default(cuid())
+
+  // Trip timing
+  tripDate             DateTime
+  departureTime        String // HH:MM format
+  estimatedArrivalTime String?
+  actualArrivalTime    String?
+
+  // Route information
+  pickupLocation  String
+  dropoffLocation String
+  destination     String
+
+  // Trip details
+  type            TripType
+  status          TripStatus @default(SCHEDULED)
+  passengersCount Int
+  notes           String?
+
+  // Distance tracking
+  kmStart           Int
+  kmEnd             Int?
+  distanceTravelled Int?
+
+  // Financial
+  tripPrice  Float?
+  actualCost Float?
+
+  // Relationships
+  agencyId String
+  agency   Agency @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+
+  hotelId String
+  hotel   Hotel  @relation(fields: [hotelId], references: [id], onDelete: Restrict)
+
+  vehicleId String
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+
+  driverId String
+  driver   Driver @relation(fields: [driverId], references: [id], onDelete: Restrict)
+
+  images      TripImage[]
+  assignments TripAssignment[]
+  auditLogs   AuditLog[]
+
+  // Soft delete & timestamps
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?
+  calendarEvent CalendarEvent?
+
+  @@index([tripDate])
+  @@index([driverId])
+  @@index([vehicleId])
+  @@index([agencyId])
+  @@index([hotelId])
+  @@index([status])
+  @@index([type])
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// TRIP ASSIGNMENT (For tracking who assigned the trip)
+// ───────────────────────────────────────────────────────────────────────────────
+
+model TripAssignment {
+  id String @id @default(cuid())
+
+  tripId String
+  trip   Trip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  assignedByUserId String
+  assignedByUser   User   @relation(fields: [assignedByUserId], references: [id], onDelete: Restrict)
+
+  assignedAt DateTime @default(now())
+  notes      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tripId])
+  @@index([tripId])
+  @@index([assignedByUserId])
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// TRIP IMAGE MODEL
+// ───────────────────────────────────────────────────────────────────────────────
+
+model TripImage {
+  id String @id @default(cuid())
+
+  tripId String
+  trip   Trip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  imageUrl  String
+  imageType TripImageType
+  caption   String?
+  fileSize  Int?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([tripId])
+  @@index([imageType])
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// MAINTENANCE RECORD MODEL
+// ───────────────────────────────────────────────────────────────────────────────
+
+model MaintenanceRecord {
+  id String @id @default(cuid())
+
+  vehicleId String
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  // Maintenance details
+  maintenanceType MaintenanceType
+  status          MaintenanceStatus @default(SCHEDULED)
+  description     String
+  notes           String?
+
+  // Scheduling
+  scheduledDate DateTime
+  completedDate DateTime?
+  nextDueDate   DateTime?
+
+  // Financial
+  estimatedCost Float?
+  actualCost    Float?
+  supplier      String?
+  invoiceNumber String?
+
+  // Tracking
+  performedBy String?
+
+  // Soft delete & timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([vehicleId])
+  @@index([scheduledDate])
+  @@index([nextDueDate])
+  @@index([maintenanceType])
+  @@index([status])
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// AUDIT LOG MODEL (For compliance & tracking)
+// ──────────────────────────────────────────────��────────────────────────────────
+
+model AuditLog {
+  id String @id @default(cuid())
+
+  userId String?
+  user   User?   @relation("UserAuditLogs", fields: [userId], references: [id], onDelete: SetNull)
+
+  createdByUserId String?
+  createdByUser   User?   @relation("CreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  driverId String?
+  driver   Driver? @relation(fields: [driverId], references: [id], onDelete: SetNull)
+
+  tripId String?
+  trip   Trip?   @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  action     String // CREATE, UPDATE, DELETE, VIEW, EXPORT, etc.
+  entityType String // User, Driver, Trip, Vehicle, etc.
+  entityId   String
+  changes    String? // JSON stringified changes
+  ipAddress  String?
+  userAgent  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdByUserId])
+  @@index([driverId])
+  @@index([tripId])
+  @@index([createdAt])
+  @@index([action])
+  @@index([entityType])
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// CALENDAR EVENT MODEL (For scheduling trips & events)
+// ───────────────────────────────────────────────────────────────────────────────
+
+model CalendarEvent {
+  id String @id @default(cuid())
+
+  // Event details
+  title       String
+  description String?
+  eventType   String // "trip", "maintenance", "meeting", "holiday"
+
+  // Scheduling
+  startDateTime DateTime
+  endDateTime   DateTime
+
+  // Relationships
+  tripId String? @unique
+  trip   Trip?   @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  // Reminder settings
+  reminderMinutes Int?
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([startDateTime])
+  @@index([endDateTime])
+  @@index([eventType])
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// REPORT MODEL (For stored analytics & reporting)
+// ───────────────────────────────────────────────────────────────────────────────
+
+model Report {
+  id String @id @default(cuid())
+
+  // Report details
+  reportType  String // "daily", "weekly", "monthly", "custom"
+  title       String
+  description String?
+
+  // Date range
+  reportStartDate DateTime
+  reportEndDate   DateTime
+
+  // Report data (JSON)
+  data String // JSON stringified report data
+
+  // Generation
+  generatedBy String?
+  generatedAt DateTime @default(now())
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([reportType])
+  @@index([generatedAt])
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// NOTIFICATION MODEL (For in-app & email notifications)
+// ───────────────────────────────────────────────────────────────────────────────
+
+model Notification {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Notification details
+  title            String
+  message          String
+  notificationType String // "trip_assigned", "maintenance_due", "vehicle_available", etc.
+
+  // Status
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
+  // Link
+  relatedEntityType String?
+  relatedEntityId   String?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// LOCATION MODEL (For multi-location support)
+// ───────────────────────────────────────────────────────────────────────────────
+
+model Location {
+  id String @id @default(cuid())
+
+  // Location details
+  name      String
+  city      String
+  country   String
+  latitude  Float?
+  longitude Float?
+  address   String?
+
+  // Status
+  isActive Boolean @default(true)
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([name, city, country])
+  @@index([city])
+  @@index([country])
+  @@index([isActive])
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// EXPORT LOG MODEL (For tracking data exports)
+// ───────────────────────────────────────────────────────────────────────────────
+
+model ExportLog {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Export details
+  exportType String // "trips", "drivers", "vehicles", "revenue", etc.
+  format     String // "excel", "pdf", "csv"
+  fileName   String
+  fileUrl    String?
+
+  // Filters used
+  filtersCriteria String? // JSON stringified filters
+
+  // Metadata
+  recordsExported Int
+  fileSize        Int?
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  expiresAt DateTime? // For temporary file cleanup
+
+  @@index([userId])
+  @@index([exportType])
+  @@index([createdAt])
+}
