@@ -107,13 +107,20 @@ import {
   UserStatus,
 } from "@/lib/data";
 
-export function TripStatusBadge({ status }: { status: TripStatus }) {
-  const map: Record<TripStatus, { label: string; className: string }> = {
+export function TripStatusBadge({ status }: { status: string | any }) {
+  // Handle both uppercase (from Prisma) and lowercase (legacy) formats
+  const statusKey = (status as string).toLowerCase() as any
+  
+  const map: Record<string, { label: string; className: string }> = {
     completed: {
       label: "Completed",
       className: "bg-emerald-50 text-emerald-700 border-emerald-200",
     },
     "in-progress": {
+      label: "In Progress",
+      className: "bg-blue-50 text-blue-700 border-blue-200",
+    },
+    "in_progress": {
       label: "In Progress",
       className: "bg-blue-50 text-blue-700 border-blue-200",
     },
@@ -125,13 +132,18 @@ export function TripStatusBadge({ status }: { status: TripStatus }) {
       label: "Assigned",
       className: "bg-violet-50 text-violet-700 border-violet-200",
     },
-  };
-  const { label, className } = map[status] ?? { label: status, className: "" };
+    cancelled: {
+      label: "Cancelled",
+      className: "bg-red-50 text-red-700 border-red-200",
+    },
+  }
+  
+  const { label, className } = map[statusKey] ?? { label: status, className: "" }
   return (
     <Badge variant="outline" className={cn("text-xs font-semibold", className)}>
       {label}
     </Badge>
-  );
+  )
 }
 
 export function DriverStatusBadge({ status }: { status: DriverStatus }) {
