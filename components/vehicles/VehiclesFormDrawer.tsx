@@ -1,64 +1,65 @@
-'use client'
+"use client";
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from '@/components/ui/sheet'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+} from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Loader } from 'lucide-react'
+} from "@/components/ui/select";
+import { Loader } from "lucide-react";
+
 import {
   updateVehicleAction,
   createVehicleAction,
   assignDriverAction,
   unassignDriverAction,
   getAvailableDriversAction,
-} from '@/app/vehicles/actions'
+} from "@/lib/vehicles/actions/vehicle.actions";
 
 interface Vehicle {
-  id?: string
-  model: string
-  plate: string
-  vin: string
-  registrationExpiry: string | Date
-  capacity: number
-  monthlyRent: number
-  salik?: number
-  owner?: string
-  kmUsage?: number
-  status?: string
-  lastMaintenance?: string | Date
-  nextMaintenanceDate?: string | Date
-  assignments?: any[]
+  id?: string;
+  model: string;
+  plate: string;
+  vin: string;
+  registrationExpiry: string | Date;
+  capacity: number;
+  monthlyRent: number;
+  salik?: number;
+  owner?: string;
+  kmUsage?: number;
+  status?: string;
+  lastMaintenance?: string | Date;
+  nextMaintenanceDate?: string | Date;
+  assignments?: any[];
 }
 
 interface Driver {
-  id: string
+  id: string;
   user: {
-    id: string
-    name: string
-    email: string
-  }
+    id: string;
+    name: string;
+    email: string;
+  };
 }
 
 interface VehiclesFormDrawerProps {
-  isOpen: boolean
-  onClose: () => void
-  onSuccess: () => void
-  vehicle?: Vehicle | null
-  userRole: string
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  vehicle?: Vehicle | null;
+  userRole: string;
 }
 
 export function VehiclesFormDrawer({
@@ -69,51 +70,51 @@ export function VehiclesFormDrawer({
   userRole,
 }: VehiclesFormDrawerProps) {
   const [formData, setFormData] = useState<Vehicle>({
-    model: '',
-    plate: '',
-    vin: '',
-    registrationExpiry: new Date().toISOString().split('T')[0],
+    model: "",
+    plate: "",
+    vin: "",
+    registrationExpiry: new Date().toISOString().split("T")[0],
     capacity: 4,
     monthlyRent: 0,
     salik: 0,
-    owner: '',
+    owner: "",
     kmUsage: 0,
-    status: 'AVAILABLE',
-  })
+    status: "AVAILABLE",
+  });
 
-  const [drivers, setDrivers] = useState<Driver[]>([])
-  const [selectedDriver, setSelectedDriver] = useState<string>('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [isFetching, setIsFetching] = useState(false)
-  const [error, setError] = useState<string>('')
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [selectedDriver, setSelectedDriver] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [error, setError] = useState<string>("");
 
-  const canManage = ['manager', 'admin', 'super_admin'].includes(userRole)
+  const canManage = ["MANAGER", "ADMIN", "SUPER_ADMIN"].includes(userRole);
 
   // Load available drivers
   const loadAvailableDrivers = async () => {
-    setIsFetching(true)
+    setIsFetching(true);
     try {
-      const result = await getAvailableDriversAction()
+      const result = await getAvailableDriversAction();
       if (result.success) {
-        setDrivers(result.data || [])
+        setDrivers(result.data || []);
       }
     } catch (err) {
-      console.error('Error loading drivers:', err)
+      console.error("Error loading drivers:", err);
     } finally {
-      setIsFetching(false)
+      setIsFetching(false);
     }
-  }
+  };
 
   // Load available drivers when editing
   useEffect(() => {
     if (isOpen && canManage && vehicle?.id) {
-      loadAvailableDrivers()
-      const currentAssignment = vehicle.assignments?.[0]
+      loadAvailableDrivers();
+      const currentAssignment = vehicle.assignments?.[0];
       if (currentAssignment) {
-        setSelectedDriver(currentAssignment.driverId)
+        setSelectedDriver(currentAssignment.driverId);
       }
     }
-  }, [isOpen, vehicle?.id, canManage])
+  }, [isOpen, vehicle?.id, canManage]);
 
   // Load vehicle data if editing
   useEffect(() => {
@@ -121,49 +122,52 @@ export function VehiclesFormDrawer({
       setFormData({
         ...vehicle,
         registrationExpiry: vehicle.registrationExpiry
-          ? new Date(vehicle.registrationExpiry).toISOString().split('T')[0]
-          : '',
-      })
+          ? new Date(vehicle.registrationExpiry).toISOString().split("T")[0]
+          : "",
+      });
     } else if (isOpen) {
       setFormData({
-        model: '',
-        plate: '',
-        vin: '',
-        registrationExpiry: new Date().toISOString().split('T')[0],
+        model: "",
+        plate: "",
+        vin: "",
+        registrationExpiry: new Date().toISOString().split("T")[0],
         capacity: 4,
         monthlyRent: 0,
         salik: 0,
-        owner: '',
+        owner: "",
         kmUsage: 0,
-        status: 'AVAILABLE',
-      })
+        status: "AVAILABLE",
+      });
     }
-    setError('')
-  }, [vehicle, isOpen])
+    setError("");
+  }, [vehicle, isOpen]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
+    const { name, value } = e.target;
+    setFormData((prev) => ({
       ...prev,
-      [name]: name.includes('monthlyRent') || name.includes('salik') || name.includes('kmUsage') 
-        ? parseFloat(value) || 0 
-        : value,
-    }))
-  }
+      [name]:
+        name.includes("monthlyRent") ||
+          name.includes("salik") ||
+          name.includes("kmUsage")
+          ? parseFloat(value) || 0
+          : value,
+    }));
+  };
 
   const handleStatusChange = (value: string) => {
-    setFormData(prev => ({ ...prev, status: value }))
-  }
+    setFormData((prev) => ({ ...prev, status: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError('')
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
 
     try {
       if (!formData.model || !formData.plate || !formData.vin) {
-        setError('Please fill in all required fields')
-        return
+        setError("Please fill in all required fields");
+        return;
       }
 
       if (vehicle?.id) {
@@ -178,17 +182,20 @@ export function VehiclesFormDrawer({
           salik: formData.salik,
           owner: formData.owner,
           kmUsage: formData.kmUsage,
-          status: (formData.status as any) || 'AVAILABLE',
-        })
+          status: (formData.status as any) || "AVAILABLE",
+        });
 
         if (!result.success) {
-          setError(result.error || 'Failed to update vehicle')
-          return
+          setError(result.error || "Failed to update vehicle");
+          return;
         }
 
         // Handle driver assignment change if applicable
-        if (selectedDriver && selectedDriver !== vehicle.assignments?.[0]?.driverId) {
-          await assignDriverAction(vehicle.id, selectedDriver)
+        if (
+          selectedDriver &&
+          selectedDriver !== vehicle.assignments?.[0]?.driverId
+        ) {
+          await assignDriverAction(vehicle.id, selectedDriver);
         }
       } else {
         // Create new vehicle
@@ -202,43 +209,47 @@ export function VehiclesFormDrawer({
           salik: formData.salik,
           owner: formData.owner,
           kmUsage: formData.kmUsage,
-        })
+        });
 
         if (!result.success) {
-          setError(result.error || 'Failed to create vehicle')
-          return
+          setError(result.error || "Failed to create vehicle");
+          return;
         }
 
         // Assign driver if selected
         if (selectedDriver && result.data?.id) {
-          await assignDriverAction(result.data.id, selectedDriver)
+          await assignDriverAction(result.data.id, selectedDriver);
         }
       }
 
-      onSuccess()
-      onClose()
+      onSuccess();
+      onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent side="right" className="w-full max-w-md overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>{vehicle?.id ? 'Edit Vehicle' : 'Add New Vehicle'}</SheetTitle>
+          <SheetTitle>
+            {vehicle?.id ? "Edit Vehicle" : "Add New Vehicle"}
+          </SheetTitle>
           <SheetDescription>
             {vehicle?.id
-              ? 'Update vehicle details and assignments'
-              : 'Create a new vehicle in your fleet'}
+              ? "Update vehicle details and assignments"
+              : "Create a new vehicle in your fleet"}
           </SheetDescription>
         </SheetHeader>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           {error && (
-            <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
+            <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+              {error}
+            </div>
           )}
 
           {/* Model */}
@@ -362,7 +373,7 @@ export function VehiclesFormDrawer({
               id="owner"
               name="owner"
               placeholder="Company or individual name"
-              value={formData.owner || ''}
+              value={formData.owner || ""}
               onChange={handleInputChange}
               disabled={isLoading}
             />
@@ -386,7 +397,10 @@ export function VehiclesFormDrawer({
           {vehicle?.id && (
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
-              <Select value={formData.status as string} onValueChange={handleStatusChange}>
+              <Select
+                value={formData.status as string}
+                onValueChange={handleStatusChange}
+              >
                 <SelectTrigger id="status" disabled={isLoading}>
                   <SelectValue />
                 </SelectTrigger>
@@ -402,14 +416,17 @@ export function VehiclesFormDrawer({
           {/* Driver Assignment (for managers only) */}
           {canManage && vehicle?.id && (
             <div className="space-y-2">
-              <Label htmlFor="driver">Assign Driver</Label>
-              <Select value={selectedDriver} onValueChange={setSelectedDriver} disabled={isFetching}>
-                <SelectTrigger id="driver">
-                  <SelectValue placeholder="Select a driver..." />
+              <Label htmlFor="DRIVER">Assign Driver</Label>
+              <Select
+                value={selectedDriver}
+                onValueChange={setSelectedDriver}
+                disabled={isFetching}
+              >
+                <SelectTrigger id="DRIVER">
+                  <SelectValue placeholder="No Driver" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No Driver</SelectItem>
-                  {drivers.map(driver => (
+                  {drivers.map((driver) => (
                     <SelectItem key={driver.id} value={driver.id}>
                       {driver.user.name}
                     </SelectItem>
@@ -430,17 +447,17 @@ export function VehiclesFormDrawer({
               {isLoading ? (
                 <>
                   <Loader className="mr-2 h-4 w-4 animate-spin" />
-                  {vehicle?.id ? 'Updating...' : 'Creating...'}
+                  {vehicle?.id ? "Updating..." : "Creating..."}
                 </>
               ) : vehicle?.id ? (
-                'Update Vehicle'
+                "Update Vehicle"
               ) : (
-                'Create Vehicle'
+                "Create Vehicle"
               )}
             </Button>
           </div>
         </form>
       </SheetContent>
     </Sheet>
-  )
+  );
 }
