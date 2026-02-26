@@ -1,12 +1,17 @@
-'use client';
+"use client";
 
-import React, { ReactNode } from 'react';
-import { usePathname } from 'next/navigation';
-import { AuthProvider } from '@/lib/contexts/AuthContext';
-import { DashboardLayout } from './DashboardLayout';
-import { ProtectedRoute } from './ProtectedRoute';
+import React, { ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { AuthProvider } from "@/lib/contexts/AuthContext";
+import { DashboardLayout } from "./DashboardLayout";
+import { ProtectedRoute } from "./ProtectedRoute";
 
-const AUTH_ROUTES = ['/auth/login', '/auth/forgot-password', '/auth/verify-code', '/auth/reset-password'];
+const AUTH_ROUTES = [
+  "/auth/login",
+  "/auth/forgot-password",
+  "/auth/verify-code",
+  "/auth/reset-password",
+];
 
 export function RootLayoutClient({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -18,9 +23,7 @@ export function RootLayoutClient({ children }: { children: ReactNode }) {
         children
       ) : (
         <ProtectedRoute>
-          <DashboardLayout>
-            {children}
-          </DashboardLayout>
+          <DashboardLayout>{children}</DashboardLayout>
         </ProtectedRoute>
       )}
     </AuthProvider>

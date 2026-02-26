@@ -109,20 +109,24 @@ import {
 
 export function TripStatusBadge({ status }: { status: TripStatus }) {
   const map: Record<TripStatus, { label: string; className: string }> = {
-    completed: {
+    COMPLETED: {
       label: "Completed",
       className: "bg-emerald-50 text-emerald-700 border-emerald-200",
     },
-    "in-progress": {
+    IN_PROGRESS: {
       label: "In Progress",
       className: "bg-blue-50 text-blue-700 border-blue-200",
     },
-    scheduled: {
+    SCHEDULED: {
       label: "Scheduled",
       className: "bg-slate-100 text-slate-600 border-slate-200",
     },
-    assigned: {
+    ASSIGNED: {
       label: "Assigned",
+      className: "bg-violet-50 text-violet-700 border-violet-200",
+    },
+    CANCELLED: {
+      label: "Cancelled",
       className: "bg-violet-50 text-violet-700 border-violet-200",
     },
   };
@@ -136,15 +140,15 @@ export function TripStatusBadge({ status }: { status: TripStatus }) {
 
 export function DriverStatusBadge({ status }: { status: DriverStatus }) {
   const map: Record<DriverStatus, { label: string; className: string }> = {
-    available: {
+    AVAILABLE: {
       label: "Available",
       className: "bg-emerald-50 text-emerald-700 border-emerald-200",
     },
-    "on-trip": {
+    ON_TRIP: {
       label: "On Trip",
       className: "bg-blue-50 text-blue-700 border-blue-200",
     },
-    "off-duty": {
+    OFF_DUTY: {
       label: "Off Duty",
       className: "bg-slate-100 text-slate-600 border-slate-200",
     },
@@ -159,15 +163,15 @@ export function DriverStatusBadge({ status }: { status: DriverStatus }) {
 
 export function VehicleStatusBadge({ status }: { status: VehicleStatus }) {
   const map: Record<VehicleStatus, { label: string; className: string }> = {
-    available: {
+    AVAILABLE: {
       label: "Available",
       className: "bg-emerald-50 text-emerald-700 border-emerald-200",
     },
-    "in-use": {
+    IN_USE: {
       label: "In Use",
       className: "bg-blue-50 text-blue-700 border-blue-200",
     },
-    maintenance: {
+    MAINTENANCE: {
       label: "Maintenance",
       className: "bg-amber-50 text-amber-700 border-amber-200",
     },
@@ -217,19 +221,19 @@ export function MaintenanceTypeBadge({ type }: { type: MaintenanceType }) {
 
 export function RoleBadge({ role }: { role: UserRole }) {
   const map: Record<UserRole, { label: string; className: string }> = {
-    driver: {
+    DRIVER: {
       label: "Driver",
       className: "bg-blue-50 text-blue-700 border-blue-200",
     },
-    manager: {
+    MANAGER: {
       label: "Manager",
       className: "bg-violet-50 text-violet-700 border-violet-200",
     },
-    admin: {
+    ADMIN: {
       label: "Admin",
       className: "bg-amber-50 text-amber-700 border-amber-200",
     },
-    super_admin: {
+    SUPER_ADMIN: {
       label: "Super Admin",
       className: "bg-red-50 text-red-700 border-red-200",
     },

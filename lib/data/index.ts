@@ -1,8 +1,13 @@
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
-export type DriverStatus = "available" | "on-trip" | "off-duty";
-export type VehicleStatus = "available" | "in-use" | "maintenance";
-export type TripStatus = "scheduled" | "assigned" | "in-progress" | "completed";
+export type DriverStatus = "AVAILABLE" | "ON_TRIP" | "OFF_DUTY";
+export type VehicleStatus = "AVAILABLE" | "IN_USE" | "MAINTENANCE";
+export type TripStatus =
+  | "SCHEDULED"
+  | "ASSIGNED"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "CANCELLED";
 export type TripType = "IN" | "OUT";
 export type MaintenanceType =
   | "oil-change"
@@ -11,7 +16,7 @@ export type MaintenanceType =
   | "service"
   | "tire-replacement"
   | "brake-service";
-export type UserRole = "driver" | "manager" | "admin" | "super_admin";
+export type UserRole = "DRIVER" | "MANAGER" | "ADMIN" | "SUPER_ADMIN";
 export type UserStatus = "active" | "inactive" | "suspended";
 
 export interface Driver {
@@ -31,7 +36,7 @@ export interface Vehicle {
   id: string;
   model: string;
   plate: string;
-  driver?: string;
+  DRIVER?: string;
   capacity: number;
   kmUsage: number;
   status: VehicleStatus;
@@ -48,7 +53,7 @@ export interface Trip {
   agency: string;
   hotel: string;
   destination: string;
-  driver: string;
+  DRIVER: string;
   vehicle: string;
   pax: number;
   kmStart: number;
@@ -120,7 +125,7 @@ export const drivers: Driver[] = [
     name: "Ahmed Hassan",
     phone: "+212 6 12 34 56 78",
     email: "ahmed@transithub.com",
-    status: "available",
+    status: "AVAILABLE",
     vehicle: "HY-2025-A",
     totalTrips: 156,
     totalKm: 4200,
@@ -132,7 +137,7 @@ export const drivers: Driver[] = [
     name: "Fatima Zahra",
     phone: "+212 6 98 76 54 32",
     email: "fatima@transithub.com",
-    status: "on-trip",
+    status: "ON_TRIP",
     vehicle: "MB-2024-B",
     totalTrips: 142,
     totalKm: 3850,
@@ -144,7 +149,7 @@ export const drivers: Driver[] = [
     name: "Mohammed Ali",
     phone: "+212 6 11 22 33 44",
     email: "mohammed@transithub.com",
-    status: "off-duty",
+    status: "OFF_DUTY",
     totalTrips: 168,
     totalKm: 4500,
     rating: 4.7,
@@ -155,7 +160,7 @@ export const drivers: Driver[] = [
     name: "Karim Benali",
     phone: "+212 6 55 66 77 88",
     email: "karim@transithub.com",
-    status: "available",
+    status: "AVAILABLE",
     vehicle: "TY-2024-C",
     totalTrips: 98,
     totalKm: 2600,
@@ -167,7 +172,7 @@ export const drivers: Driver[] = [
     name: "Youssef Alaoui",
     phone: "+212 6 33 44 55 66",
     email: "youssef@transithub.com",
-    status: "off-duty",
+    status: "OFF_DUTY",
     totalTrips: 45,
     totalKm: 1200,
     rating: 4.3,
@@ -180,10 +185,10 @@ export const vehicles: Vehicle[] = [
     id: "1",
     model: "Hyundai Starex",
     plate: "HY-2025-A",
-    driver: "Ahmed Hassan",
+    DRIVER: "Ahmed Hassan",
     capacity: 8,
     kmUsage: 4200,
-    status: "available",
+    status: "AVAILABLE",
     lastMaintenance: "2026-02-15",
     monthlyRent: 6200,
     salik: 1850,
@@ -193,10 +198,10 @@ export const vehicles: Vehicle[] = [
     id: "2",
     model: "Mercedes V-Class",
     plate: "MB-2024-B",
-    driver: "Fatima Zahra",
+    DRIVER: "Fatima Zahra",
     capacity: 7,
     kmUsage: 3850,
-    status: "in-use",
+    status: "IN_USE",
     lastMaintenance: "2026-02-01",
     monthlyRent: 7200,
     salik: 2032,
@@ -208,7 +213,7 @@ export const vehicles: Vehicle[] = [
     plate: "HY-2023-C",
     capacity: 8,
     kmUsage: 5100,
-    status: "maintenance",
+    status: "MAINTENANCE",
     lastMaintenance: "2026-02-10",
     monthlyRent: 6200,
     salik: 1980,
@@ -218,10 +223,10 @@ export const vehicles: Vehicle[] = [
     id: "4",
     model: "Toyota Yaris",
     plate: "TY-2024-C",
-    driver: "Karim Benali",
+    DRIVER: "Karim Benali",
     capacity: 4,
     kmUsage: 2600,
-    status: "available",
+    status: "AVAILABLE",
     lastMaintenance: "2026-02-05",
     monthlyRent: 1500,
     salik: 1110,
@@ -233,7 +238,7 @@ export const vehicles: Vehicle[] = [
     plate: "KA-2025-D",
     capacity: 7,
     kmUsage: 1800,
-    status: "available",
+    status: "AVAILABLE",
     lastMaintenance: "2026-02-08",
     monthlyRent: 6750,
     salik: 2200,
@@ -249,12 +254,12 @@ export const trips: Trip[] = [
     agency: "Maroc Tours",
     hotel: "Riad Marrakech",
     destination: "Atlas Mountains",
-    driver: "Ahmed Hassan",
+    DRIVER: "Ahmed Hassan",
     vehicle: "HY-2025-A",
     pax: 6,
     kmStart: 4200,
     kmEnd: 4250,
-    status: "completed",
+    status: "COMPLETED",
     type: "OUT",
   },
   {
@@ -264,12 +269,12 @@ export const trips: Trip[] = [
     agency: "Desert Dreams",
     hotel: "Hotel Atlas",
     destination: "Sahara Desert",
-    driver: "Fatima Zahra",
+    DRIVER: "Fatima Zahra",
     vehicle: "MB-2024-B",
     pax: 5,
     kmStart: 3850,
     kmEnd: 3920,
-    status: "in-progress",
+    status: "IN_PROGRESS",
     type: "IN",
   },
   {
@@ -279,12 +284,12 @@ export const trips: Trip[] = [
     agency: "City Guides",
     hotel: "Grand Hotel",
     destination: "Medina Tour",
-    driver: "Mohammed Ali",
+    DRIVER: "Mohammed Ali",
     vehicle: "HY-2023-C",
     pax: 8,
     kmStart: 5100,
     kmEnd: 5120,
-    status: "scheduled",
+    status: "SCHEDULED",
     type: "OUT",
   },
   {
@@ -294,12 +299,12 @@ export const trips: Trip[] = [
     agency: "Maroc Tours",
     hotel: "Riad Fes",
     destination: "Fes Medina",
-    driver: "Ahmed Hassan",
+    DRIVER: "Ahmed Hassan",
     vehicle: "HY-2025-A",
     pax: 4,
     kmStart: 4250,
     kmEnd: 4310,
-    status: "scheduled",
+    status: "SCHEDULED",
     type: "OUT",
   },
   {
@@ -309,12 +314,12 @@ export const trips: Trip[] = [
     agency: "Desert Dreams",
     hotel: "Palais Namaskar",
     destination: "Ourika Valley",
-    driver: "Karim Benali",
+    DRIVER: "Karim Benali",
     vehicle: "TY-2024-C",
     pax: 3,
     kmStart: 2600,
     kmEnd: 2680,
-    status: "assigned",
+    status: "ASSIGNED",
     type: "IN",
   },
   {
@@ -324,12 +329,12 @@ export const trips: Trip[] = [
     agency: "City Guides",
     hotel: "Hotel Mamounia",
     destination: "Agafay Desert",
-    driver: "Fatima Zahra",
+    DRIVER: "Fatima Zahra",
     vehicle: "MB-2024-B",
     pax: 6,
     kmStart: 3780,
     kmEnd: 3850,
-    status: "completed",
+    status: "COMPLETED",
     type: "OUT",
   },
   {
@@ -339,12 +344,12 @@ export const trips: Trip[] = [
     agency: "Maroc Tours",
     hotel: "Riad Kniza",
     destination: "Essaouira Day",
-    driver: "Mohammed Ali",
+    DRIVER: "Mohammed Ali",
     vehicle: "HY-2023-C",
     pax: 7,
     kmStart: 5020,
     kmEnd: 5100,
-    status: "completed",
+    status: "COMPLETED",
     type: "IN",
   },
   {
@@ -354,12 +359,12 @@ export const trips: Trip[] = [
     agency: "City Guides",
     hotel: "Sofitel Marrakech",
     destination: "Ouzoud Falls",
-    driver: "Ahmed Hassan",
+    DRIVER: "Ahmed Hassan",
     vehicle: "HY-2025-A",
     pax: 5,
     kmStart: 4120,
     kmEnd: 4200,
-    status: "completed",
+    status: "COMPLETED",
     type: "OUT",
   },
   {
@@ -369,12 +374,12 @@ export const trips: Trip[] = [
     agency: "Desert Dreams",
     hotel: "La Mamounia",
     destination: "Toubkal Trek",
-    driver: "Karim Benali",
+    DRIVER: "Karim Benali",
     vehicle: "TY-2024-C",
     pax: 2,
     kmStart: 2520,
     kmEnd: 2600,
-    status: "completed",
+    status: "COMPLETED",
     type: "OUT",
   },
 ];
@@ -509,7 +514,7 @@ export const maintenanceRecords: MaintenanceRecord[] = [
     type: "oil-change",
     cost: 250,
     description: "Oil and filter change",
-    notes: "Standard maintenance",
+    notes: "Standard MAINTENANCE",
     nextDueDate: "2026-03-20",
   },
   {
@@ -518,7 +523,7 @@ export const maintenanceRecords: MaintenanceRecord[] = [
     date: "2026-02-05",
     type: "service",
     cost: 400,
-    description: "Routine maintenance service",
+    description: "Routine MAINTENANCE service",
     notes: "Filter changes and fluid top-ups",
     nextDueDate: "2026-05-05",
   },
@@ -590,10 +595,10 @@ export const users: User[] = [
   {
     id: "1",
     name: "Sarah Johnson",
-    email: "admin@transithub.com",
+    email: "ADMIN@transithub.com",
     password: "password123",
     phone: "+1-555-0101",
-    role: "admin",
+    role: "ADMIN",
     status: "active",
     department: "Operations",
     createdAt: "2025-01-15",
@@ -605,7 +610,7 @@ export const users: User[] = [
     email: "superadmin@transithub.com",
     password: "password123",
     phone: "+1-555-0102",
-    role: "super_admin",
+    role: "SUPER_ADMIN",
     status: "active",
     department: "Management",
     createdAt: "2024-01-01",
@@ -614,10 +619,10 @@ export const users: User[] = [
   {
     id: "3",
     name: "David Wilson",
-    email: "manager@transithub.com",
+    email: "MANAGER@transithub.com",
     password: "password123",
     phone: "+1-555-0103",
-    role: "manager",
+    role: "MANAGER",
     status: "active",
     department: "Operations",
     createdAt: "2025-03-10",
@@ -629,7 +634,7 @@ export const users: User[] = [
     email: "driver1@transithub.com",
     password: "password123",
     phone: "+212 6 12 34 56 78",
-    role: "driver",
+    role: "DRIVER",
     status: "active",
     assignedVehicle: "HY-2025-A",
     createdAt: "2024-06-01",
@@ -641,7 +646,7 @@ export const users: User[] = [
     email: "driver2@transithub.com",
     password: "password123",
     phone: "+212 6 98 76 54 32",
-    role: "driver",
+    role: "DRIVER",
     status: "active",
     assignedVehicle: "MB-2024-B",
     createdAt: "2024-07-12",
@@ -653,7 +658,7 @@ export const users: User[] = [
     email: "driver3@transithub.com",
     password: "password123",
     phone: "+212 6 11 22 33 44",
-    role: "driver",
+    role: "DRIVER",
     status: "active",
     createdAt: "2024-08-20",
     lastLogin: "2026-02-18",
@@ -664,7 +669,7 @@ export const users: User[] = [
     email: "driver4@transithub.com",
     password: "password123",
     phone: "+212 6 55 66 77 88",
-    role: "driver",
+    role: "DRIVER",
     status: "active",
     assignedVehicle: "TY-2024-C",
     createdAt: "2024-09-01",
@@ -676,7 +681,7 @@ export const users: User[] = [
     email: "manager2@transithub.com",
     password: "password123",
     phone: "+212 6 22 33 44 55",
-    role: "manager",
+    role: "MANAGER",
     status: "active",
     department: "Fleet Management",
     createdAt: "2025-02-01",
@@ -688,7 +693,7 @@ export const users: User[] = [
     email: "admin2@transithub.com",
     password: "password123",
     phone: "+212 6 77 88 99 00",
-    role: "admin",
+    role: "ADMIN",
     status: "active",
     department: "Administration",
     createdAt: "2025-01-20",
@@ -700,7 +705,7 @@ export const users: User[] = [
     email: "driver5@transithub.com",
     password: "password123",
     phone: "+212 6 33 44 55 66",
-    role: "driver",
+    role: "DRIVER",
     status: "inactive",
     createdAt: "2024-10-15",
     lastLogin: "2026-01-20",
@@ -709,7 +714,7 @@ export const users: User[] = [
 
 export const demoAccounts = {
   superAdmin: { email: "superadmin@transithub.com", password: "password123" },
-  admin: { email: "admin@transithub.com", password: "password123" },
-  manager: { email: "manager@transithub.com", password: "password123" },
-  driver: { email: "driver1@transithub.com", password: "password123" },
+  ADMIN: { email: "ADMIN@transithub.com", password: "password123" },
+  MANAGER: { email: "MANAGER@transithub.com", password: "password123" },
+  DRIVER: { email: "driver1@transithub.com", password: "password123" },
 };
