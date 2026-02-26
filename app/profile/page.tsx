@@ -54,7 +54,7 @@ export default function ProfilePage() {
   });
   const [notifs, setNotifs] = useState({
     email: true,
-    sms: user?.role === "driver",
+    sms: user?.role === "DRIVER",
   });
 
   const save = () => {
@@ -308,7 +308,7 @@ export default function ProfilePage() {
                   key: "sms",
                   label: "SMS Notifications",
                   desc: "Receive SMS alerts for urgent matters (drivers only)",
-                  disabled: user?.role !== "driver",
+                  disabled: user?.role !== "DRIVER",
                 },
               ].map((item) => (
                 <div

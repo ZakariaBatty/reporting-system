@@ -21,10 +21,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 const demoAccounts = [
-  { email: "superadmin@transithub.com", role: "Super Admin" },
-  { email: "admin@transithub.com", role: "Admin" },
-  { email: "manager@transithub.com", role: "Manager" },
-  { email: "driver1@transithub.com", role: "Driver" },
+  { email: "superadmin@test.com", role: "Super Admin" },
+  { email: "admin@test.com", role: "Admin" },
+  { email: "manager@test.com", role: "Manager" },
+  { email: "driver@test.com", role: "Driver" },
 ];
 
 export function LoginClient() {
@@ -126,7 +126,10 @@ export function LoginClient() {
               <button
                 key={a.email}
                 type="button"
-                onClick={() => setEmail(a.email)}
+                onClick={() => {
+                  setEmail(a.email);
+                  setPassword("Passwor@d123");
+                }}
                 className="flex w-full items-center justify-between rounded-lg bg-white/10 px-3 py-2 text-left transition-colors hover:bg-white/20"
               >
                 <span className="font-mono text-xs text-white/85">
