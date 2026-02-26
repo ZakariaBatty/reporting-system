@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client'
+import { Prisma, VehicleStatus } from '@prisma/client'
 import { prisma } from '@/lib/db/client'
 import { vehicleRepository } from '../repositories/vehicle.repository'
 
@@ -9,25 +9,30 @@ import { vehicleRepository } from '../repositories/vehicle.repository'
  */
 
 interface VehicleCreateData {
-  plate: string
   model: string
-  brand?: string
-  year?: number
-  fuelType?: string
-  capacity?: number
-  status?: 'ACTIVE' | 'MAINTENANCE' | 'INACTIVE'
-  notes?: string
+  plate: string
+  vin: string
+  registrationExpiry: string | Date
+  capacity: number
+  monthlyRent: number
+  salik?: number
+  owner?: string
+  kmUsage?: number
 }
 
 interface VehicleUpdateData {
-  plate?: string
   model?: string
-  brand?: string
-  year?: number
-  fuelType?: string
+  plate?: string
+  vin?: string
+  registrationExpiry?: string | Date
   capacity?: number
-  status?: 'ACTIVE' | 'MAINTENANCE' | 'INACTIVE'
-  notes?: string
+  monthlyRent?: number
+  salik?: number
+  owner?: string
+  kmUsage?: number
+  status?: VehicleStatus
+  lastMaintenance?: string | Date
+  nextMaintenanceDate?: string | Date
 }
 
 export const vehicleService = {
@@ -40,6 +45,32 @@ export const vehicleService = {
     }
 
     return vehicleRepository.findVehiclesForUser(userId, userRole)
+  },
+
+  /**
+   * Get a single vehicle with authorization check
+   */
+  async getVehicle(vehicleId: string, userId: string, userRole: string) {
+    const vehicle = await vehicleRepository.findVehicleById(vehicleId)
+    if (!vehicle) {
+      throw new Error('Vehicle not found')
+    }
+
+    // Check authorization
+    const canViewAllVehicles = ['manager', 'admin', 'super_admin'].includes(userRole)
+
+    if (!canViewAllVehicles) {
+      // Drivers can only view their assigned vehicles
+      const isAssigned = await vehicleRepository.isDriverAssignedToVehicle(
+        vehicleId,
+        userId,
+      )
+      if (!isAssigned) {
+        throw new Error('Unauthorized: Cannot view this vehicle')
+      }
+    }
+
+    return vehicle
   },
 
   /**
@@ -121,20 +152,48 @@ export const vehicleService = {
   },
 
   /**
-   * Delete a vehicle
+   * Create a new vehicle (Manager/Admin only)
    */
-  async deleteVehicle(vehicleId: string, userId: string, userRole: string) {
-    // Only super admins can delete vehicles
-    if (userRole !== 'super_admin' && userRole !== 'admin') {
-      throw new Error('Unauthorized: Cannot delete vehicles')
+  async createVehicle(userRole: string, vehicleData: VehicleCreateData) {
+    // Validation: Only managers and admins can create vehicles
+    if (!['manager', 'admin', 'super_admin'].includes(userRole)) {
+      throw new Error('Unauthorized: Cannot create vehicles')
     }
 
-    const vehicle = await vehicleRepository.findVehicleById(vehicleId)
-    if (!vehicle) {
-      throw new Error('Vehicle not found')
+    // Validate required fields
+    if (!vehicleData.model || !vehicleData.plate || !vehicleData.vin) {
+      throw new Error('Missing required fields: model, plate, vin')
     }
 
-    return vehicleRepository.deleteVehicle(vehicleId)
+    // Check if plate already exists
+    const existingPlate = await prisma.vehicle.findUnique({
+      where: { plate: vehicleData.plate },
+    })
+    if (existingPlate && !existingPlate.deletedAt) {
+      throw new Error('Vehicle with this plate already exists')
+    }
+
+    // Check if VIN already exists
+    const existingVin = await prisma.vehicle.findUnique({
+      where: { vin: vehicleData.vin },
+    })
+    if (existingVin && !existingVin.deletedAt) {
+      throw new Error('Vehicle with this VIN already exists')
+    }
+
+    const createInput: Prisma.VehicleCreateInput = {
+      model: vehicleData.model,
+      plate: vehicleData.plate,
+      vin: vehicleData.vin,
+      registrationExpiry: new Date(vehicleData.registrationExpiry),
+      capacity: vehicleData.capacity,
+      monthlyRent: vehicleData.monthlyRent,
+      salik: vehicleData.salik ?? 0,
+      owner: vehicleData.owner,
+      kmUsage: vehicleData.kmUsage ?? 0,
+    }
+
+    return vehicleRepository.createVehicle(createInput)
   },
 
   /**
@@ -213,23 +272,64 @@ export const vehicleService = {
   },
 
   /**
-   * Check if user can access vehicle
+   * Update an existing vehicle (Manager/Admin only)
    */
-  async canUserAccessVehicle(
+  async updateVehicle(
     vehicleId: string,
-    userId: string,
     userRole: string,
-  ): Promise<boolean> {
-    // Managers/Admins can access all vehicles
-    if (['manager', 'admin', 'super_admin'].includes(userRole)) {
-      return true
+    vehicleData: VehicleUpdateData,
+  ) {
+    // Validation: Only managers and admins can update vehicles
+    if (!['manager', 'admin', 'super_admin'].includes(userRole)) {
+      throw new Error('Unauthorized: Cannot update vehicles')
     }
 
-    // Drivers can only access their assigned vehicles
-    if (userRole === 'driver') {
-      return vehicleRepository.isDriverAssignedToVehicle(vehicleId, userId)
+    // Verify vehicle exists
+    const vehicle = await vehicleRepository.findVehicleById(vehicleId)
+    if (!vehicle) {
+      throw new Error('Vehicle not found')
     }
 
-    return false
+    // Check if new plate is unique (if being changed)
+    if (vehicleData.plate && vehicleData.plate !== vehicle.plate) {
+      const existingPlate = await prisma.vehicle.findUnique({
+        where: { plate: vehicleData.plate },
+      })
+      if (existingPlate && !existingPlate.deletedAt) {
+        throw new Error('Vehicle with this plate already exists')
+      }
+    }
+
+    // Check if new VIN is unique (if being changed)
+    if (vehicleData.vin && vehicleData.vin !== vehicle.vin) {
+      const existingVin = await prisma.vehicle.findUnique({
+        where: { vin: vehicleData.vin },
+      })
+      if (existingVin && !existingVin.deletedAt) {
+        throw new Error('Vehicle with this VIN already exists')
+      }
+    }
+
+    // Build update data
+    const updateInput: Prisma.VehicleUpdateInput = {}
+
+    if (vehicleData.model) updateInput.model = vehicleData.model
+    if (vehicleData.plate) updateInput.plate = vehicleData.plate
+    if (vehicleData.vin) updateInput.vin = vehicleData.vin
+    if (vehicleData.registrationExpiry)
+      updateInput.registrationExpiry = new Date(vehicleData.registrationExpiry)
+    if (vehicleData.capacity !== undefined) updateInput.capacity = vehicleData.capacity
+    if (vehicleData.monthlyRent !== undefined)
+      updateInput.monthlyRent = vehicleData.monthlyRent
+    if (vehicleData.salik !== undefined) updateInput.salik = vehicleData.salik
+    if (vehicleData.owner !== undefined) updateInput.owner = vehicleData.owner
+    if (vehicleData.kmUsage !== undefined) updateInput.kmUsage = vehicleData.kmUsage
+    if (vehicleData.status) updateInput.status = vehicleData.status
+    if (vehicleData.lastMaintenance)
+      updateInput.lastMaintenance = new Date(vehicleData.lastMaintenance)
+    if (vehicleData.nextMaintenanceDate)
+      updateInput.nextMaintenanceDate = new Date(vehicleData.nextMaintenanceDate)
+
+    return vehicleRepository.updateVehicle(vehicleId, updateInput)
   },
 }

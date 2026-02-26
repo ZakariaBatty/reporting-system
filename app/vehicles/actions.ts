@@ -52,14 +52,16 @@ export async function getVehicleStatsAction() {
   }
 }
 
-export async function createVehicleAction(vehicleData: {
-  plate: string
+export async function createVehicleAction(data: {
   model: string
-  brand?: string
-  year?: number
-  fuelType?: string
-  capacity?: number
-  notes?: string
+  plate: string
+  vin: string
+  registrationExpiry: Date
+  capacity: number
+  monthlyRent: number
+  salik?: number
+  owner?: string
+  kmUsage?: number
 }) {
   try {
     const session = await auth()
@@ -69,11 +71,18 @@ export async function createVehicleAction(vehicleData: {
     }
 
     const userRole = (session.user as any).role || 'driver'
-    const vehicle = await vehicleService.createVehicle(
-      session.user.id,
-      userRole,
-      vehicleData,
-    )
+
+    const vehicle = await vehicleService.createVehicle(userRole, {
+      model: data.model,
+      plate: data.plate,
+      vin: data.vin,
+      registrationExpiry: data.registrationExpiry,
+      capacity: data.capacity,
+      monthlyRent: data.monthlyRent,
+      salik: data.salik,
+      owner: data.owner,
+      kmUsage: data.kmUsage,
+    })
 
     return { success: true, data: vehicle }
   } catch (error) {
@@ -87,15 +96,19 @@ export async function createVehicleAction(vehicleData: {
 
 export async function updateVehicleAction(
   vehicleId: string,
-  vehicleData: {
-    plate?: string
+  data: {
     model?: string
-    brand?: string
-    year?: number
-    fuelType?: string
+    plate?: string
+    vin?: string
+    registrationExpiry?: Date
     capacity?: number
-    status?: 'ACTIVE' | 'MAINTENANCE' | 'INACTIVE'
-    notes?: string
+    monthlyRent?: number
+    salik?: number
+    owner?: string
+    kmUsage?: number
+    status?: 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE'
+    lastMaintenance?: Date
+    nextMaintenanceDate?: Date
   },
 ) {
   try {
@@ -106,12 +119,21 @@ export async function updateVehicleAction(
     }
 
     const userRole = (session.user as any).role || 'driver'
-    const vehicle = await vehicleService.updateVehicle(
-      vehicleId,
-      session.user.id,
-      userRole,
-      vehicleData,
-    )
+
+    const vehicle = await vehicleService.updateVehicle(vehicleId, userRole, {
+      model: data.model,
+      plate: data.plate,
+      vin: data.vin,
+      registrationExpiry: data.registrationExpiry,
+      capacity: data.capacity,
+      monthlyRent: data.monthlyRent,
+      salik: data.salik,
+      owner: data.owner,
+      kmUsage: data.kmUsage,
+      status: data.status as any,
+      lastMaintenance: data.lastMaintenance,
+      nextMaintenanceDate: data.nextMaintenanceDate,
+    })
 
     return { success: true, data: vehicle }
   } catch (error) {
@@ -132,9 +154,15 @@ export async function deleteVehicleAction(vehicleId: string) {
     }
 
     const userRole = (session.user as any).role || 'driver'
-    await vehicleService.deleteVehicle(vehicleId, session.user.id, userRole)
 
-    return { success: true, data: { id: vehicleId } }
+    // Only managers/admins can delete
+    if (!['manager', 'admin', 'super_admin'].includes(userRole)) {
+      return { success: false, error: 'Unauthorized: Cannot delete vehicles' }
+    }
+
+    await vehicleRepository.deleteVehicle(vehicleId)
+
+    return { success: true }
   } catch (error) {
     console.error('Error deleting vehicle:', error)
     return {
@@ -153,12 +181,13 @@ export async function assignDriverAction(vehicleId: string, driverId: string) {
     }
 
     const userRole = (session.user as any).role || 'driver'
-    const assignment = await vehicleService.assignDriver(
-      vehicleId,
-      driverId,
-      session.user.id,
-      userRole,
-    )
+
+    // Only managers/admins can assign
+    if (!['manager', 'admin', 'super_admin'].includes(userRole)) {
+      return { success: false, error: 'Unauthorized: Cannot assign drivers' }
+    }
+
+    const assignment = await vehicleRepository.assignDriverToVehicle(vehicleId, driverId)
 
     return { success: true, data: assignment }
   } catch (error) {
@@ -170,7 +199,7 @@ export async function assignDriverAction(vehicleId: string, driverId: string) {
   }
 }
 
-export async function unassignDriverAction(assignmentId: string) {
+export async function unassignDriverAction(vehicleId: string) {
   try {
     const session = await auth()
 
@@ -179,9 +208,15 @@ export async function unassignDriverAction(assignmentId: string) {
     }
 
     const userRole = (session.user as any).role || 'driver'
-    await vehicleService.unassignDriver(assignmentId, session.user.id, userRole)
 
-    return { success: true, data: { id: assignmentId } }
+    // Only managers/admins can unassign
+    if (!['manager', 'admin', 'super_admin'].includes(userRole)) {
+      return { success: false, error: 'Unauthorized: Cannot unassign drivers' }
+    }
+
+    await vehicleRepository.unassignDriver(vehicleId)
+
+    return { success: true }
   } catch (error) {
     console.error('Error unassigning driver:', error)
     return {
@@ -200,7 +235,13 @@ export async function getAvailableDriversAction() {
     }
 
     const userRole = (session.user as any).role || 'driver'
-    const drivers = await vehicleService.getAvailableDrivers(session.user.id, userRole)
+
+    // Only managers/admins can view drivers
+    if (!['manager', 'admin', 'super_admin'].includes(userRole)) {
+      return { success: false, error: 'Unauthorized' }
+    }
+
+    const drivers = await vehicleRepository.getAvailableDrivers()
 
     return { success: true, data: drivers }
   } catch (error) {

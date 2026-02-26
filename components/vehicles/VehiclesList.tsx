@@ -1,159 +1,153 @@
 'use client'
 
 import React from 'react'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Edit2, Trash2, Loader } from 'lucide-react'
+import { VehicleStatusBadge } from '@/components/shared'
+import { Trash2, Edit2 } from 'lucide-react'
+import { deleteVehicleAction } from '@/app/vehicles/actions'
 
 interface Vehicle {
   id: string
-  plate: string
   model: string
-  brand?: string
-  year?: number
-  fuelType?: string
-  capacity?: number
+  plate: string
+  vin: string
+  registrationExpiry: Date | string
+  capacity: number
+  kmUsage: number
+  monthlyRent: number
+  salik: number
+  owner?: string
   status: string
-  notes?: string
+  lastMaintenance?: Date | string
   assignments?: any[]
 }
 
 interface VehiclesListProps {
   vehicles: Vehicle[]
-  isLoading?: boolean
   userRole: string
   onEdit: (vehicle: Vehicle) => void
-  onDelete: (vehicleId: string) => void
+  onRefresh: () => void
 }
 
 export function VehiclesList({
   vehicles,
-  isLoading = false,
   userRole,
   onEdit,
-  onDelete,
+  onRefresh,
 }: VehiclesListProps) {
-  const canManageVehicles = ['manager', 'admin', 'super_admin'].includes(userRole)
+  const canManage = ['manager', 'admin', 'super_admin'].includes(userRole)
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Loader className="h-8 w-8 animate-spin text-slate-400" />
-      </div>
-    )
-  }
-
-  if (!vehicles || vehicles.length === 0) {
-    return (
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-8 text-center">
-        <p className="text-slate-500">No vehicles found</p>
-      </div>
-    )
-  }
-
-  const getStatusColor = (status: string) => {
-    const statusMap: Record<string, { bg: string; text: string }> = {
-      ACTIVE: { bg: 'bg-emerald-50', text: 'text-emerald-700' },
-      MAINTENANCE: { bg: 'bg-amber-50', text: 'text-amber-700' },
-      INACTIVE: { bg: 'bg-slate-100', text: 'text-slate-700' },
+  const handleDelete = async (vehicleId: string) => {
+    if (!window.confirm('Are you sure you want to delete this vehicle?')) {
+      return
     }
-    return statusMap[status] || { bg: 'bg-slate-50', text: 'text-slate-700' }
+
+    try {
+      const result = await deleteVehicleAction(vehicleId)
+      if (result.success) {
+        onRefresh()
+      } else {
+        alert(result.error || 'Failed to delete vehicle')
+      }
+    } catch (error) {
+      alert('An error occurred while deleting the vehicle')
+    }
+  }
+
+  if (vehicles.length === 0) {
+    return (
+      <Card className="shadow-sm">
+        <CardContent className="p-8 text-center">
+          <p className="text-muted-foreground">No vehicles found</p>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-      <Table>
-        <TableHeader>
-          <TableRow className="border-slate-200 bg-slate-50">
-            <TableHead className="font-semibold text-slate-900">Plate</TableHead>
-            <TableHead className="font-semibold text-slate-900">Model</TableHead>
-            <TableHead className="font-semibold text-slate-900">Brand</TableHead>
-            <TableHead className="font-semibold text-slate-900">Year</TableHead>
-            <TableHead className="font-semibold text-slate-900">Capacity</TableHead>
-            <TableHead className="font-semibold text-slate-900">Status</TableHead>
-            <TableHead className="font-semibold text-slate-900">Assigned Drivers</TableHead>
-            {canManageVehicles && (
-              <TableHead className="text-right font-semibold text-slate-900">
-                Actions
-              </TableHead>
-            )}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {vehicles.map((vehicle) => (
-            <TableRow key={vehicle.id} className="border-slate-200 hover:bg-slate-50">
-              <TableCell className="font-mono font-semibold text-slate-900">
-                {vehicle.plate}
-              </TableCell>
-              <TableCell className="text-slate-600">{vehicle.model}</TableCell>
-              <TableCell className="text-slate-600">{vehicle.brand || '-'}</TableCell>
-              <TableCell className="text-slate-600">{vehicle.year || '-'}</TableCell>
-              <TableCell className="text-slate-600">
-                {vehicle.capacity ? `${vehicle.capacity} seats` : '-'}
-              </TableCell>
-              <TableCell>
-                <Badge
-                  variant="outline"
-                  className={`${getStatusColor(vehicle.status).bg} ${getStatusColor(vehicle.status).text} border-0 font-semibold`}
-                >
-                  {vehicle.status}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-slate-600">
-                {vehicle.assignments && vehicle.assignments.length > 0 ? (
-                  <div className="flex flex-wrap gap-1">
-                    {vehicle.assignments.map((assignment: any) => (
-                      <Badge
-                        key={assignment.id}
-                        variant="secondary"
-                        className="text-xs"
+    <Card className="shadow-sm overflow-hidden">
+      <CardContent className="p-0 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-muted/40 text-[11px] font-bold uppercase tracking-wide text-muted-foreground border-b">
+              {[
+                'Plate',
+                'Model',
+                'VIN',
+                'Capacity',
+                'KM Usage',
+                'Monthly Rent',
+                'Salik',
+                'Owner',
+                'Reg. Expiry',
+                'Status',
+                ...(canManage ? ['Actions'] : []),
+              ].map(h => (
+                <th key={h} className="whitespace-nowrap px-4 py-2.5 text-left">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {vehicles.map(vehicle => (
+              <tr key={vehicle.id} className="transition-colors hover:bg-muted/30">
+                <td className="px-4 py-3 font-mono text-xs font-bold text-primary">
+                  {vehicle.plate}
+                </td>
+                <td className="px-4 py-3 font-semibold">{vehicle.model}</td>
+                <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                  {vehicle.vin}
+                </td>
+                <td className="px-4 py-3 font-mono">{vehicle.capacity} pax</td>
+                <td className="px-4 py-3 font-mono">
+                  {vehicle.kmUsage.toLocaleString()} km
+                </td>
+                <td className="px-4 py-3 font-mono font-semibold">
+                  AED {vehicle.monthlyRent.toLocaleString()}
+                </td>
+                <td className="px-4 py-3 font-mono text-xs">
+                  AED {vehicle.salik.toLocaleString()}
+                </td>
+                <td className="px-4 py-3 text-muted-foreground text-xs">
+                  {vehicle.owner ?? '—'}
+                </td>
+                <td className="px-4 py-3 font-mono text-xs">
+                  {vehicle.registrationExpiry
+                    ? new Date(vehicle.registrationExpiry).toLocaleDateString()
+                    : '—'}
+                </td>
+                <td className="px-4 py-3">
+                  <VehicleStatusBadge status={vehicle.status} />
+                </td>
+                {canManage && (
+                  <td className="px-4 py-3">
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onEdit(vehicle)}
+                        className="h-8 w-8 p-0"
                       >
-                        {assignment.driver?.user?.name || 'Unknown'}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="text-slate-400">No drivers</span>
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(vehicle.id)}
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </td>
                 )}
-              </TableCell>
-              {canManageVehicles && (
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onEdit(vehicle)}
-                      className="text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        if (confirm('Are you sure you want to delete this vehicle?')) {
-                          onDelete(vehicle.id)
-                        }
-                      }}
-                      className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              )}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </CardContent>
+    </Card>
   )
 }

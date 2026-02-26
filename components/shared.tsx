@@ -169,8 +169,10 @@ export function DriverStatusBadge({ status }: { status: DriverStatus }) {
   );
 }
 
-export function VehicleStatusBadge({ status }: { status: VehicleStatus }) {
-  const map: Record<VehicleStatus, { label: string; className: string }> = {
+export function VehicleStatusBadge({ status }: { status: any }) {
+  const statusKey = (status as string).toLowerCase() as any
+  
+  const map: Record<string, { label: string; className: string }> = {
     available: {
       label: "Available",
       className: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -179,14 +181,22 @@ export function VehicleStatusBadge({ status }: { status: VehicleStatus }) {
       label: "In Use",
       className: "bg-blue-50 text-blue-700 border-blue-200",
     },
+    "in_use": {
+      label: "In Use",
+      className: "bg-blue-50 text-blue-700 border-blue-200",
+    },
     maintenance: {
       label: "Maintenance",
       className: "bg-amber-50 text-amber-700 border-amber-200",
     },
-  };
-  const { label, className } = map[status] ?? { label: status, className: "" };
+  }
+  const { label, className } = map[statusKey] ?? { label: status, className: "" }
   return (
     <Badge variant="outline" className={cn("text-xs font-semibold", className)}>
+      {label}
+    </Badge>
+  )
+}
       {label}
     </Badge>
   );

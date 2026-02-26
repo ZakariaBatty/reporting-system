@@ -1,200 +1,152 @@
-# Vehicles Page Refactor Summary
+# Vehicles Page Refactor - Complete Implementation
 
-## Architecture Overview
+## Overview
+The Vehicles page has been fully refactored to use real backend Prisma database integration with complete role-based access control, matching the exact Trips page architecture.
 
-The Vehicles page has been completely refactored to match the production-ready Trips page architecture with a 4-layer stack and role-based access control.
-
-## Layer Structure
+## Architecture (4-Layer)
 
 ### 1. Repository Layer (`lib/vehicles/repositories/vehicle.repository.ts`)
-- Pure Prisma database access with role-aware filtering
-- Key methods:
-  - `findVehiclesForUser()` - Drivers see assigned vehicles only, Managers/Admins see all
-  - `findVehicleById()` - Single vehicle with full relations
+- **Prisma Field Mapping**: Uses ONLY actual Vehicle schema fields:
+  - `id`, `model`, `plate`, `vin`, `registrationExpiry`
+  - `capacity`, `kmUsage`, `monthlyRent`, `salik`, `owner`
+  - `status` (AVAILABLE, IN_USE, MAINTENANCE)
+  - `lastMaintenance`, `nextMaintenanceDate`
+  - `createdAt`, `updatedAt`, `deletedAt`
+- **Role-Aware Queries**:
+  - Drivers see only assigned vehicles (via VehicleAssignment.isActive = true)
+  - Managers/Admins see all active vehicles
+- **Key Methods**:
+  - `findVehiclesForUser()` - Role-filtered vehicle list
   - `createVehicle()`, `updateVehicle()`, `deleteVehicle()` - CRUD operations
   - `assignDriverToVehicle()`, `unassignDriver()` - Driver assignment
   - `getVehicleStats()` - Dashboard statistics
-  - `getActiveVehicles()` - For dropdowns/filters
-  - `isDriverAssignedToVehicle()` - Assignment verification
+  - `getCurrentDriver()` - Get assigned driver for a vehicle
 
 ### 2. Service Layer (`lib/vehicles/services/vehicle.service.ts`)
-- Business logic with server-side authorization checks
-- All role verification happens here before database operations
-- Methods:
-  - `getVehicles(userId, userRole)` - Role-filtered vehicle list
-  - `getVehicle(vehicleId, userId, userRole)` - Single vehicle with auth check
-  - `createVehicle()` - Managers/Admins only
-  - `updateVehicle()` - Managers/Admins only
-  - `deleteVehicle()` - Admins only
-  - `assignDriver()` - Managers/Admins only
-  - `unassignDriver()` - Managers/Admins only
-  - `canUserAccessVehicle()` - Authorization check
+- **Authorization Checks**:
+  - Managers/Admins: Full CRUD access
+  - Drivers: Read-only access to assigned vehicles
+- **Data Validation**:
+  - Validates all required Prisma fields (model, plate, vin, registrationExpiry, capacity, monthlyRent)
+  - Ensures plate and VIN uniqueness
+  - Validates registration expiry dates
+- **Business Logic**:
+  - `getVehicles()` - Fetch role-filtered vehicles
+  - `createVehicle()` - Create with validation
+  - `updateVehicle()` - Update with validation
+  - `deleteVehicle()` - Soft delete (sets deletedAt)
 
-### 3. Server Actions Layer (`app/vehicles/actions.ts`)
-- NextAuth-protected API endpoints
-- All actions validate user session before calling service layer
-- Actions:
-  - `getVehiclesAction()` - Fetch vehicles for current user
+### 3. Server Actions (`app/vehicles/actions.ts`)
+- **NextAuth Protected**: All actions require valid session
+- **Role-Based Authorization**: Server-side permission checks
+- **Actions**:
+  - `getVehiclesAction()` - Fetch vehicles for logged-in user
   - `getVehicleStatsAction()` - Get dashboard statistics
-  - `createVehicleAction()` - Create new vehicle
-  - `updateVehicleAction()` - Update vehicle details
-  - `deleteVehicleAction()` - Delete vehicle
-  - `assignDriverAction()` - Assign driver to vehicle
-  - `unassignDriverAction()` - Unassign driver
-  - `getAvailableDriversAction()` - Get drivers for assignment dropdown
+  - `createVehicleAction()` - Create new vehicle (Manager+ only)
+  - `updateVehicleAction()` - Update vehicle (Manager+ only)
+  - `deleteVehicleAction()` - Delete vehicle (Manager+ only)
+  - `assignDriverAction()` - Assign driver (Manager+ only)
+  - `unassignDriverAction()` - Remove driver (Manager+ only)
+  - `getAvailableDriversAction()` - List drivers for assignment
 
-### 4. UI Component Layer
-- Fully functional, no hooks (except useSession/useState for client-side state)
-- Separated concerns for better maintainability
+### 4. UI Components
 
-#### `VehiclesContainer` (`components/vehicles/VehiclesContainer.tsx`)
-- Main orchestrator component
-- Manages local state for vehicles, stats, and form visibility
-- Calls server actions and refreshes data on success
-- Handles create/edit/delete/success flows
+#### VehiclesContainer (`components/vehicles/VehiclesContainer.tsx`)
+- Main component managing state and orchestration
+- Loads vehicles and stats on mount
+- Handles create/edit form state
+- Refreshes data after CRUD operations
 
-#### `VehiclesHeader` (`components/vehicles/VehiclesHeader.tsx`)
-- Displays page title, description, and stats cards
-- "New Vehicle" button (visible only to Managers/Admins)
-- Shows: Total, Active, Maintenance, Inactive vehicle counts
+#### VehiclesList (`components/vehicles/VehiclesList.tsx`)
+- Displays vehicle table with all Prisma fields
+- Columns: Plate, Model, VIN, Capacity, KM Usage, Monthly Rent, Salik, Owner, Registration Expiry, Status
+- Role-based action buttons (Edit/Delete for Managers+)
+- Handles vehicle deletion with confirmation
 
-#### `VehiclesList` (`components/vehicles/VehiclesList.tsx`)
-- Responsive data table with all vehicle information
-- Shows license plate, model, brand, year, capacity, status
-- Displays assigned drivers for each vehicle
-- Edit/Delete buttons (Managers/Admins only)
-- Loading state and empty state handling
+#### VehiclesFormDrawer (`components/vehicles/VehiclesFormDrawer.tsx`)
+- Sidebar form for create/update operations
+- Form fields match Prisma schema exactly:
+  - Model, Plate, VIN, Registration Expiry (required)
+  - Capacity, Monthly Rent (required)
+  - Salik, Owner, KM Usage (optional)
+  - Status dropdown (for edits)
+  - Driver assignment dropdown (Managers+ only)
+- Unassigns previous driver before assigning new one
+- Form validation and error handling
 
-#### `VehiclesFormDrawer` (`components/vehicles/VehiclesFormDrawer.tsx`)
-- Right-side sheet for creating/editing vehicles
-- Form fields: Plate, Model, Brand, Year, Capacity, Fuel Type, Status, Notes
-- Driver assignment section (Managers/Admins only)
-- Shows current assignments and allows adding/removing drivers
-- Form validation and loading states
+#### VehiclesHeader (`components/vehicles/VehiclesHeader.tsx`)
+- Dashboard with 4 stats cards:
+  - Total Vehicles
+  - Available (status = AVAILABLE)
+  - In Use (status = IN_USE)
+  - Maintenance (status = MAINTENANCE)
+- "New Vehicle" button (Managers+ only)
 
 ## Role-Based Access Control
 
-### Driver Role
-- ✅ View only vehicles assigned to them
-- ✅ Read-only access to vehicle details
-- ❌ Cannot create, edit, or delete vehicles
-- ❌ Cannot assign/unassign drivers
-
-### Manager Role
-- ✅ Full CRUD on all vehicles
+### Super Admin / Admin / Manager
+- ✅ View all vehicles
 - ✅ Create new vehicles
-- ✅ Edit vehicle details and status
+- ✅ Edit vehicle details
 - ✅ Delete vehicles
-- ✅ Assign drivers to vehicles
-- ✅ Unassign drivers from vehicles
+- ✅ Assign/unassign drivers
+- ✅ Update vehicle status
+- ✅ Access all form fields
 
-### Admin Role
-- ✅ All Manager permissions
-- ✅ Delete vehicles (admin-level operation)
-
-### Super Admin Role
-- ✅ All Admin permissions
-- ✅ Full system access
+### Driver
+- ✅ View only assigned vehicles
+- ❌ Cannot create vehicles
+- ❌ Cannot edit vehicles
+- ❌ Cannot delete vehicles
+- ❌ Cannot assign drivers
+- ❌ Cannot access form controls
 
 ## Data Flow
 
-1. **Page Load**
-   - Server component authenticates user via NextAuth
-   - Redirects unauthenticated users to /auth/login
-   - Renders VehiclesContainer (client component)
-
-2. **Initial Data Fetch**
-   - VehiclesContainer calls `getVehiclesAction()`
-   - Server validates user session and role
-   - Service filters vehicles by role (drivers see own only)
-   - Repository queries Prisma with role-aware filtering
-   - Data returned to client
-
-3. **Display**
-   - VehiclesHeader shows statistics
-   - VehiclesList renders data table with role-appropriate actions
-   - Managers/Admins see edit/delete buttons
-   - Drivers see read-only table
-
-4. **Create/Update/Delete**
-   - User submits form via server action
-   - NextAuth validates session
-   - Service checks authorization
-   - Repository performs database operation
-   - Client refetches data and updates UI immediately
-
-5. **Driver Assignment**
-   - Manager selects vehicle and driver
-   - `assignDriverAction()` called
-   - Service verifies authorization
-   - VehicleAssignment record created
-   - UI refreshes to show new assignment
-
-## Key Features
-
-### Uppercase Status Consistency
-- All vehicle statuses stored as uppercase: `ACTIVE`, `MAINTENANCE`, `INACTIVE`
-- UI displays properly formatted status badges
-- Consistent with Prisma schema and Trips pattern
-
-### Immediate UI Updates
-- All CRUD operations trigger automatic data refresh
-- Users see changes immediately after submit
-- No page reload required
-
-### Security
-- All authorization enforced server-side
-- NextAuth session validation on every action
-- Role-based filtering at repository level
-- No sensitive data exposed to unauthorized users
-
-### Performance
-- Role-aware queries prevent over-fetching
-- Drivers only see assigned vehicles
-- Managers/Admins query all vehicles efficiently
-- Prisma relations optimized for common queries
-
-### User Experience
-- Responsive table with proper column layout
-- Sidebar drawer for create/update (doesn't navigate away)
-- Driver assignment inline with vehicle edit form
-- Loading states and error handling
-- Empty state messaging
-
-## Database Schema Integration
-
-The refactor uses these Prisma models:
-- `Vehicle` - Core vehicle data (plate, model, brand, year, etc.)
-- `VehicleAssignment` - Driver-to-vehicle assignments with audit trail
-- `Driver` - Driver records linked to User model
-- `User` - Authentication user records
-
-All queries use proper Prisma relations and include statements for efficient data loading.
-
-## File Structure
-
 ```
-lib/vehicles/
-├── repositories/
-│   └── vehicle.repository.ts    (214 lines)
-└── services/
-    └── vehicle.service.ts       (236 lines)
-
-app/vehicles/
-└── actions.ts                   (214 lines)
-└── page.tsx                     (Updated to use VehiclesContainer)
-
-components/vehicles/
-├── VehiclesContainer.tsx        (131 lines)
-├── VehiclesHeader.tsx           (76 lines)
-├── VehiclesList.tsx             (160 lines)
-└── VehiclesFormDrawer.tsx       (467 lines)
+User Action → Server Action → Service Layer (Auth Check)
+  ↓
+Repository (Prisma Query) → Database Update
+  ↓
+UI Refreshes with New Data (Immediate)
 ```
 
-## Migration Notes
+## Uppercase Status Consistency
 
-- Old mock data from `lib/data/vehicles` is no longer used
-- Old `VehiclesClient.tsx` can be removed
-- All data now comes from real Prisma database
-- Same architecture pattern as Trips page ensures consistency
-- No breaking changes to other parts of the application
+The Prisma schema uses uppercase statuses:
+- `AVAILABLE` - Vehicle is available for assignment
+- `IN_USE` - Vehicle is currently in use
+- `MAINTENANCE` - Vehicle is undergoing maintenance
+
+The VehicleStatusBadge component handles both uppercase and lowercase formats for compatibility.
+
+## Key Improvements Over Previous Implementation
+
+1. **Real Database**: All data persists in PostgreSQL via Prisma
+2. **Role-Based Filtering**: Drivers see only their assigned vehicles
+3. **Schema Alignment**: Uses ONLY fields that exist in Prisma schema
+4. **Immediate Updates**: CRUD operations refresh UI instantly
+5. **Server-Side Security**: Authorization enforced on backend
+6. **Type Safety**: Full TypeScript type checking throughout
+7. **Functional Architecture**: No classes, pure functions throughout
+8. **SOLID Principles**: Single responsibility per layer/component
+
+## Database Relations
+
+- **Vehicle** ↔ **VehicleAssignment** (one-to-many)
+- **VehicleAssignment** ↔ **Driver** (many-to-one)
+- **Driver** ↔ **User** (one-to-one)
+- **Vehicle** → **Trip** (one-to-many)
+- **Vehicle** → **MaintenanceRecord** (one-to-many)
+
+## Status Enum Values (from Prisma)
+
+```
+enum VehicleStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+}
+```
+
+All status operations use these exact values from the Prisma enum.

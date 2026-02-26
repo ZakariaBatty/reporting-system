@@ -7,9 +7,9 @@ import { Truck, AlertCircle, Wrench, Power } from 'lucide-react'
 
 interface VehicleStats {
   totalVehicles: number
-  activeVehicles: number
+  availableVehicles: number
+  inUseVehicles: number
   maintenanceVehicles: number
-  inactiveVehicles: number
 }
 
 interface VehiclesHeaderProps {
@@ -52,22 +52,22 @@ export function VehiclesHeader({
           variant="default"
         />
         <StatCard
-          label="Active"
-          value={stats?.activeVehicles ?? 0}
+          label="Available"
+          value={stats?.availableVehicles ?? 0}
           icon={Power}
           variant="success"
+        />
+        <StatCard
+          label="In Use"
+          value={stats?.inUseVehicles ?? 0}
+          icon={AlertCircle}
+          variant="accent"
         />
         <StatCard
           label="Maintenance"
           value={stats?.maintenanceVehicles ?? 0}
           icon={Wrench}
-          variant="accent"
-        />
-        <StatCard
-          label="Inactive"
-          value={stats?.inactiveVehicles ?? 0}
-          icon={AlertCircle}
-          variant="default"
+          variant="warning"
         />
       </div>
     </div>

@@ -13,22 +13,26 @@ import {
 
 interface Vehicle {
   id: string
-  plate: string
   model: string
-  brand?: string
-  year?: number
-  fuelType?: string
-  capacity?: number
+  plate: string
+  vin: string
+  registrationExpiry: Date | string
+  capacity: number
+  kmUsage: number
+  monthlyRent: number
+  salik: number
+  owner?: string
   status: string
-  notes?: string
+  lastMaintenance?: Date | string
+  nextMaintenanceDate?: Date | string
   assignments?: any[]
 }
 
 interface VehicleStats {
   totalVehicles: number
-  activeVehicles: number
+  availableVehicles: number
+  inUseVehicles: number
   maintenanceVehicles: number
-  inactiveVehicles: number
 }
 
 export function VehiclesContainer() {
@@ -112,10 +116,9 @@ export function VehiclesContainer() {
 
       <VehiclesList
         vehicles={vehicles}
-        isLoading={isLoading}
         userRole={userRole}
         onEdit={handleEdit}
-        onDelete={handleDelete}
+        onRefresh={loadVehicles}
       />
 
       <VehiclesFormDrawer

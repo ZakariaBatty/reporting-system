@@ -16,13 +16,21 @@ export const vehicleRepository = {
   async findVehiclesForUser(userId: string, userRole: string) {
     const where: Prisma.VehicleWhereInput = {
       deletedAt: null,
-      ...(userRole === 'driver' && { assignments: { some: { driverId: userId } } }),
+      ...(userRole === 'driver' && {
+        assignments: {
+          some: {
+            driverId: userId,
+            isActive: true,
+          },
+        },
+      }),
     }
 
     return prisma.vehicle.findMany({
       where,
       include: {
         assignments: {
+          where: { isActive: true },
           include: {
             driver: {
               include: {
@@ -31,9 +39,10 @@ export const vehicleRepository = {
             },
           },
         },
-        maintenanceRecords: {
-          orderBy: { date: 'desc' },
-          take: 5,
+        maintenance: {
+          where: { deletedAt: null },
+          orderBy: { scheduledDate: 'desc' },
+          take: 3,
         },
       },
       orderBy: { plate: 'asc' },
@@ -48,6 +57,7 @@ export const vehicleRepository = {
       where: { id: vehicleId },
       include: {
         assignments: {
+          where: { isActive: true },
           include: {
             driver: {
               include: {
@@ -57,8 +67,9 @@ export const vehicleRepository = {
           },
           orderBy: { assignedAt: 'desc' },
         },
-        maintenanceRecords: {
-          orderBy: { date: 'desc' },
+        maintenance: {
+          where: { deletedAt: null },
+          orderBy: { scheduledDate: 'desc' },
         },
       },
     })
@@ -80,7 +91,6 @@ export const vehicleRepository = {
             },
           },
         },
-        maintenanceRecords: true,
       },
     })
   },
@@ -94,6 +104,7 @@ export const vehicleRepository = {
       data,
       include: {
         assignments: {
+          where: { isActive: true },
           include: {
             driver: {
               include: {
@@ -102,7 +113,6 @@ export const vehicleRepository = {
             },
           },
         },
-        maintenanceRecords: true,
       },
     })
   },
@@ -120,13 +130,19 @@ export const vehicleRepository = {
   /**
    * Assign a driver to a vehicle
    */
-  async assignDriverToVehicle(vehicleId: string, driverId: string, assignedByUserId: string) {
+  async assignDriverToVehicle(vehicleId: string, driverId: string) {
+    // First unassign any existing active assignments for this vehicle
+    await prisma.vehicleAssignment.updateMany({
+      where: { vehicleId, isActive: true },
+      data: { isActive: false, unassignedAt: new Date() },
+    })
+
+    // Create new assignment
     return prisma.vehicleAssignment.create({
       data: {
-        vehicle: { connect: { id: vehicleId } },
-        driver: { connect: { id: driverId } },
-        assignedByUser: { connect: { id: assignedByUserId } },
-        assignedAt: new Date(),
+        vehicleId,
+        driverId,
+        isActive: true,
       },
       include: {
         driver: {
@@ -141,9 +157,10 @@ export const vehicleRepository = {
   /**
    * Unassign a driver from a vehicle
    */
-  async unassignDriver(assignmentId: string) {
-    return prisma.vehicleAssignment.delete({
-      where: { id: assignmentId },
+  async unassignDriver(vehicleId: string) {
+    return prisma.vehicleAssignment.updateMany({
+      where: { vehicleId, isActive: true },
+      data: { isActive: false, unassignedAt: new Date() },
     })
   },
 
@@ -171,23 +188,28 @@ export const vehicleRepository = {
     if (userRole === 'driver' && userId) {
       where = {
         ...where,
-        assignments: { some: { driverId: userId } },
+        assignments: {
+          some: {
+            driverId: userId,
+            isActive: true,
+          },
+        },
       }
     }
 
-    const [totalVehicles, activeVehicles, maintenanceVehicles, inactiveVehicles] =
+    const [totalVehicles, availableVehicles, inUseVehicles, maintenanceVehicles] =
       await Promise.all([
         prisma.vehicle.count({ where }),
-        prisma.vehicle.count({ where: { ...where, status: 'ACTIVE' } }),
+        prisma.vehicle.count({ where: { ...where, status: 'AVAILABLE' } }),
+        prisma.vehicle.count({ where: { ...where, status: 'IN_USE' } }),
         prisma.vehicle.count({ where: { ...where, status: 'MAINTENANCE' } }),
-        prisma.vehicle.count({ where: { ...where, status: 'INACTIVE' } }),
       ])
 
     return {
       totalVehicles,
-      activeVehicles,
+      availableVehicles,
+      inUseVehicles,
       maintenanceVehicles,
-      inactiveVehicles,
     }
   },
 
@@ -196,7 +218,7 @@ export const vehicleRepository = {
    */
   async getActiveVehicles() {
     return prisma.vehicle.findMany({
-      where: { deletedAt: null, status: 'ACTIVE' },
+      where: { deletedAt: null, status: 'AVAILABLE' },
       select: { id: true, plate: true, model: true },
       orderBy: { plate: 'asc' },
     })
@@ -210,8 +232,29 @@ export const vehicleRepository = {
       where: {
         vehicleId,
         driverId,
+        isActive: true,
       },
     })
     return !!assignment
+  },
+
+  /**
+   * Get the currently assigned driver for a vehicle
+   */
+  async getCurrentDriver(vehicleId: string) {
+    const assignment = await prisma.vehicleAssignment.findFirst({
+      where: {
+        vehicleId,
+        isActive: true,
+      },
+      include: {
+        driver: {
+          include: {
+            user: { select: { id: true, name: true, email: true, phone: true } },
+          },
+        },
+      },
+    })
+    return assignment?.driver ?? null
   },
 }

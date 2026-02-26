@@ -18,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import { Loader } from 'lucide-react'
 import {
   updateVehicleAction,
@@ -27,18 +26,21 @@ import {
   unassignDriverAction,
   getAvailableDriversAction,
 } from '@/app/vehicles/actions'
-import { Badge } from '@/components/ui/badge'
 
 interface Vehicle {
   id?: string
-  plate: string
   model: string
-  brand?: string
-  year?: number
-  fuelType?: string
-  capacity?: number
+  plate: string
+  vin: string
+  registrationExpiry: string | Date
+  capacity: number
+  monthlyRent: number
+  salik?: number
+  owner?: string
+  kmUsage?: number
   status?: string
-  notes?: string
+  lastMaintenance?: string | Date
+  nextMaintenanceDate?: string | Date
   assignments?: any[]
 }
 
@@ -67,57 +69,27 @@ export function VehiclesFormDrawer({
   userRole,
 }: VehiclesFormDrawerProps) {
   const [formData, setFormData] = useState<Vehicle>({
-    plate: '',
     model: '',
-    brand: '',
-    year: new Date().getFullYear(),
-    fuelType: 'DIESEL',
+    plate: '',
+    vin: '',
+    registrationExpiry: new Date().toISOString().split('T')[0],
     capacity: 4,
-    status: 'ACTIVE',
-    notes: '',
+    monthlyRent: 0,
+    salik: 0,
+    owner: '',
+    kmUsage: 0,
+    status: 'AVAILABLE',
   })
 
   const [drivers, setDrivers] = useState<Driver[]>([])
   const [selectedDriver, setSelectedDriver] = useState<string>('')
   const [isLoading, setIsLoading] = useState(false)
   const [isFetching, setIsFetching] = useState(false)
+  const [error, setError] = useState<string>('')
 
   const canManage = ['manager', 'admin', 'super_admin'].includes(userRole)
 
   // Load available drivers
-  useEffect(() => {
-    if (isOpen && canManage && vehicle?.id) {
-      loadAvailableDrivers()
-    }
-  }, [isOpen, vehicle?.id, canManage])
-
-  // Load vehicle data if editing
-  useEffect(() => {
-    if (vehicle && isOpen) {
-      setFormData({
-        plate: vehicle.plate || '',
-        model: vehicle.model || '',
-        brand: vehicle.brand || '',
-        year: vehicle.year,
-        fuelType: vehicle.fuelType || 'DIESEL',
-        capacity: vehicle.capacity,
-        status: vehicle.status || 'ACTIVE',
-        notes: vehicle.notes || '',
-      })
-    } else if (isOpen) {
-      setFormData({
-        plate: '',
-        model: '',
-        brand: '',
-        year: new Date().getFullYear(),
-        fuelType: 'DIESEL',
-        capacity: 4,
-        status: 'ACTIVE',
-        notes: '',
-      })
-    }
-  }, [vehicle, isOpen])
-
   const loadAvailableDrivers = async () => {
     setIsFetching(true)
     try {
@@ -125,94 +97,128 @@ export function VehiclesFormDrawer({
       if (result.success) {
         setDrivers(result.data || [])
       }
-    } catch (error) {
-      console.error('Error loading drivers:', error)
+    } catch (err) {
+      console.error('Error loading drivers:', err)
     } finally {
       setIsFetching(false)
     }
   }
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
+  // Load available drivers when editing
+  useEffect(() => {
+    if (isOpen && canManage && vehicle?.id) {
+      loadAvailableDrivers()
+      const currentAssignment = vehicle.assignments?.[0]
+      if (currentAssignment) {
+        setSelectedDriver(currentAssignment.driverId)
+      }
+    }
+  }, [isOpen, vehicle?.id, canManage])
+
+  // Load vehicle data if editing
+  useEffect(() => {
+    if (vehicle && isOpen) {
+      setFormData({
+        ...vehicle,
+        registrationExpiry: vehicle.registrationExpiry
+          ? new Date(vehicle.registrationExpiry).toISOString().split('T')[0]
+          : '',
+      })
+    } else if (isOpen) {
+      setFormData({
+        model: '',
+        plate: '',
+        vin: '',
+        registrationExpiry: new Date().toISOString().split('T')[0],
+        capacity: 4,
+        monthlyRent: 0,
+        salik: 0,
+        owner: '',
+        kmUsage: 0,
+        status: 'AVAILABLE',
+      })
+    }
+    setError('')
+  }, [vehicle, isOpen])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
-      [name]: name === 'year' || name === 'capacity' ? parseInt(value) || 0 : value,
+      [name]: name.includes('monthlyRent') || name.includes('salik') || name.includes('kmUsage') 
+        ? parseFloat(value) || 0 
+        : value,
     }))
   }
 
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
+  const handleStatusChange = (value: string) => {
+    setFormData(prev => ({ ...prev, status: value }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError('')
 
     try {
-      let result
+      if (!formData.model || !formData.plate || !formData.vin) {
+        setError('Please fill in all required fields')
+        return
+      }
 
       if (vehicle?.id) {
         // Update existing vehicle
-        result = await updateVehicleAction(vehicle.id, formData)
+        const result = await updateVehicleAction(vehicle.id, {
+          model: formData.model,
+          plate: formData.plate,
+          vin: formData.vin,
+          registrationExpiry: new Date(formData.registrationExpiry),
+          capacity: formData.capacity,
+          monthlyRent: formData.monthlyRent,
+          salik: formData.salik,
+          owner: formData.owner,
+          kmUsage: formData.kmUsage,
+          status: (formData.status as any) || 'AVAILABLE',
+        })
+
+        if (!result.success) {
+          setError(result.error || 'Failed to update vehicle')
+          return
+        }
+
+        // Handle driver assignment change if applicable
+        if (selectedDriver && selectedDriver !== vehicle.assignments?.[0]?.driverId) {
+          await assignDriverAction(vehicle.id, selectedDriver)
+        }
       } else {
         // Create new vehicle
-        result = await createVehicleAction(formData)
+        const result = await createVehicleAction({
+          model: formData.model,
+          plate: formData.plate,
+          vin: formData.vin,
+          registrationExpiry: new Date(formData.registrationExpiry),
+          capacity: formData.capacity,
+          monthlyRent: formData.monthlyRent,
+          salik: formData.salik,
+          owner: formData.owner,
+          kmUsage: formData.kmUsage,
+        })
+
+        if (!result.success) {
+          setError(result.error || 'Failed to create vehicle')
+          return
+        }
+
+        // Assign driver if selected
+        if (selectedDriver && result.data?.id) {
+          await assignDriverAction(result.data.id, selectedDriver)
+        }
       }
 
-      if (result.success) {
-        onSuccess()
-        onClose()
-      } else {
-        alert(`Error: ${result.error}`)
-      }
-    } catch (error) {
-      console.error('Error saving vehicle:', error)
-      alert('Failed to save vehicle')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleAssignDriver = async () => {
-    if (!selectedDriver || !vehicle?.id) {
-      alert('Please select a driver')
-      return
-    }
-
-    setIsLoading(true)
-    try {
-      const result = await assignDriverAction(vehicle.id, selectedDriver)
-      if (result.success) {
-        setSelectedDriver('')
-        onSuccess()
-      } else {
-        alert(`Error: ${result.error}`)
-      }
-    } catch (error) {
-      console.error('Error assigning driver:', error)
-      alert('Failed to assign driver')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleUnassignDriver = async (assignmentId: string) => {
-    setIsLoading(true)
-    try {
-      const result = await unassignDriverAction(assignmentId)
-      if (result.success) {
-        onSuccess()
-      } else {
-        alert(`Error: ${result.error}`)
-      }
-    } catch (error) {
-      console.error('Error unassigning driver:', error)
-      alert('Failed to unassign driver')
+      onSuccess()
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setIsLoading(false)
     }
@@ -220,246 +226,220 @@ export function VehiclesFormDrawer({
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-full max-w-md overflow-y-auto sm:max-w-md">
-        <SheetHeader className="mb-6">
-          <SheetTitle>{vehicle?.id ? 'Edit Vehicle' : 'New Vehicle'}</SheetTitle>
+      <SheetContent side="right" className="w-full max-w-md overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>{vehicle?.id ? 'Edit Vehicle' : 'Add New Vehicle'}</SheetTitle>
           <SheetDescription>
-            {vehicle?.id ? 'Update vehicle information' : 'Create a new vehicle'}
+            {vehicle?.id
+              ? 'Update vehicle details and assignments'
+              : 'Create a new vehicle in your fleet'}
           </SheetDescription>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Plate */}
-          <div>
-            <Label htmlFor="plate" className="text-slate-700">
-              License Plate *
-            </Label>
-            <Input
-              id="plate"
-              name="plate"
-              placeholder="ABC1234"
-              value={formData.plate}
-              onChange={handleInputChange}
-              className="mt-2 border-slate-200"
-              required
-              disabled={!canManage}
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          {error && (
+            <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
+          )}
 
           {/* Model */}
-          <div>
-            <Label htmlFor="model" className="text-slate-700">
-              Model *
+          <div className="space-y-2">
+            <Label htmlFor="model">
+              Model <span className="text-red-500">*</span>
             </Label>
             <Input
               id="model"
               name="model"
-              placeholder="Sprinter"
+              placeholder="e.g., Toyota Coaster"
               value={formData.model}
               onChange={handleInputChange}
-              className="mt-2 border-slate-200"
+              disabled={isLoading}
               required
-              disabled={!canManage}
             />
           </div>
 
-          {/* Brand */}
-          <div>
-            <Label htmlFor="brand" className="text-slate-700">
-              Brand
+          {/* Plate */}
+          <div className="space-y-2">
+            <Label htmlFor="plate">
+              License Plate <span className="text-red-500">*</span>
             </Label>
             <Input
-              id="brand"
-              name="brand"
-              placeholder="Mercedes-Benz"
-              value={formData.brand || ''}
+              id="plate"
+              name="plate"
+              placeholder="e.g., ABC 123"
+              value={formData.plate}
               onChange={handleInputChange}
-              className="mt-2 border-slate-200"
-              disabled={!canManage}
+              disabled={isLoading || !!vehicle?.id}
+              required
             />
           </div>
 
-          {/* Year & Capacity Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="year" className="text-slate-700">
-                Year
-              </Label>
-              <Input
-                id="year"
-                name="year"
-                type="number"
-                placeholder="2024"
-                value={formData.year || ''}
-                onChange={handleInputChange}
-                className="mt-2 border-slate-200"
-                disabled={!canManage}
-              />
-            </div>
-            <div>
-              <Label htmlFor="capacity" className="text-slate-700">
-                Capacity (seats)
-              </Label>
-              <Input
-                id="capacity"
-                name="capacity"
-                type="number"
-                placeholder="4"
-                value={formData.capacity || ''}
-                onChange={handleInputChange}
-                className="mt-2 border-slate-200"
-                disabled={!canManage}
-              />
-            </div>
+          {/* VIN */}
+          <div className="space-y-2">
+            <Label htmlFor="vin">
+              VIN <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="vin"
+              name="vin"
+              placeholder="Vehicle Identification Number"
+              value={formData.vin}
+              onChange={handleInputChange}
+              disabled={isLoading || !!vehicle?.id}
+              required
+            />
           </div>
 
-          {/* Fuel Type */}
-          <div>
-            <Label htmlFor="fuelType" className="text-slate-700">
-              Fuel Type
+          {/* Registration Expiry */}
+          <div className="space-y-2">
+            <Label htmlFor="registrationExpiry">
+              Registration Expiry <span className="text-red-500">*</span>
             </Label>
-            <Select
-              value={formData.fuelType || 'DIESEL'}
-              onValueChange={(value) => handleSelectChange('fuelType', value)}
-              disabled={!canManage}
-            >
-              <SelectTrigger className="mt-2 border-slate-200">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="DIESEL">Diesel</SelectItem>
-                <SelectItem value="PETROL">Petrol</SelectItem>
-                <SelectItem value="ELECTRIC">Electric</SelectItem>
-                <SelectItem value="HYBRID">Hybrid</SelectItem>
-              </SelectContent>
-            </Select>
+            <Input
+              id="registrationExpiry"
+              name="registrationExpiry"
+              type="date"
+              value={formData.registrationExpiry as string}
+              onChange={handleInputChange}
+              disabled={isLoading}
+              required
+            />
+          </div>
+
+          {/* Capacity */}
+          <div className="space-y-2">
+            <Label htmlFor="capacity">
+              Passenger Capacity <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="capacity"
+              name="capacity"
+              type="number"
+              min="1"
+              value={formData.capacity}
+              onChange={handleInputChange}
+              disabled={isLoading}
+              required
+            />
+          </div>
+
+          {/* Monthly Rent */}
+          <div className="space-y-2">
+            <Label htmlFor="monthlyRent">
+              Monthly Rent (AED) <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="monthlyRent"
+              name="monthlyRent"
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.monthlyRent}
+              onChange={handleInputChange}
+              disabled={isLoading}
+              required
+            />
+          </div>
+
+          {/* Salik */}
+          <div className="space-y-2">
+            <Label htmlFor="salik">Salik (AED)</Label>
+            <Input
+              id="salik"
+              name="salik"
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.salik || 0}
+              onChange={handleInputChange}
+              disabled={isLoading}
+            />
+          </div>
+
+          {/* Owner */}
+          <div className="space-y-2">
+            <Label htmlFor="owner">Vehicle Owner</Label>
+            <Input
+              id="owner"
+              name="owner"
+              placeholder="Company or individual name"
+              value={formData.owner || ''}
+              onChange={handleInputChange}
+              disabled={isLoading}
+            />
+          </div>
+
+          {/* KM Usage */}
+          <div className="space-y-2">
+            <Label htmlFor="kmUsage">KM Usage</Label>
+            <Input
+              id="kmUsage"
+              name="kmUsage"
+              type="number"
+              min="0"
+              value={formData.kmUsage || 0}
+              onChange={handleInputChange}
+              disabled={isLoading}
+            />
           </div>
 
           {/* Status */}
-          {canManage && (
-            <div>
-              <Label htmlFor="status" className="text-slate-700">
-                Status
-              </Label>
-              <Select
-                value={formData.status || 'ACTIVE'}
-                onValueChange={(value) => handleSelectChange('status', value)}
-              >
-                <SelectTrigger className="mt-2 border-slate-200">
+          {vehicle?.id && (
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select value={formData.status as string} onValueChange={handleStatusChange}>
+                <SelectTrigger id="status" disabled={isLoading}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="AVAILABLE">Available</SelectItem>
+                  <SelectItem value="IN_USE">In Use</SelectItem>
                   <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
-                  <SelectItem value="INACTIVE">Inactive</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           )}
 
-          {/* Notes */}
-          <div>
-            <Label htmlFor="notes" className="text-slate-700">
-              Notes
-            </Label>
-            <Textarea
-              id="notes"
-              name="notes"
-              placeholder="Additional notes..."
-              value={formData.notes || ''}
-              onChange={handleInputChange}
-              className="mt-2 border-slate-200"
-              rows={3}
-              disabled={!canManage}
-            />
-          </div>
+          {/* Driver Assignment (for managers only) */}
+          {canManage && vehicle?.id && (
+            <div className="space-y-2">
+              <Label htmlFor="driver">Assign Driver</Label>
+              <Select value={selectedDriver} onValueChange={setSelectedDriver} disabled={isFetching}>
+                <SelectTrigger id="driver">
+                  <SelectValue placeholder="Select a driver..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No Driver</SelectItem>
+                  {drivers.map(driver => (
+                    <SelectItem key={driver.id} value={driver.id}>
+                      {driver.user.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Submit Button */}
-          {canManage && (
+          <div className="pt-4">
             <Button
               type="submit"
-              disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-700"
+              disabled={isLoading || isFetching}
+              className="w-full"
+              size="lg"
             >
-              {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-              {vehicle?.id ? 'Update Vehicle' : 'Create Vehicle'}
+              {isLoading ? (
+                <>
+                  <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  {vehicle?.id ? 'Updating...' : 'Creating...'}
+                </>
+              ) : vehicle?.id ? (
+                'Update Vehicle'
+              ) : (
+                'Create Vehicle'
+              )}
             </Button>
-          )}
-        </form>
-
-        {/* Driver Assignment Section */}
-        {canManage && vehicle?.id && (
-          <div className="mt-8 border-t border-slate-200 pt-6">
-            <h3 className="text-sm font-semibold text-slate-900">Assign Drivers</h3>
-            <p className="mt-1 text-xs text-slate-500">
-              Manage which drivers can use this vehicle
-            </p>
-
-            {/* Current Assignments */}
-            {vehicle.assignments && vehicle.assignments.length > 0 && (
-              <div className="mt-4 space-y-2">
-                <p className="text-xs font-medium text-slate-600">Currently Assigned:</p>
-                {vehicle.assignments.map((assignment: any) => (
-                  <div
-                    key={assignment.id}
-                    className="flex items-center justify-between rounded-lg bg-slate-50 p-3"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">
-                        {assignment.driver?.user?.name}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {assignment.driver?.user?.email}
-                      </p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleUnassignDriver(assignment.id)}
-                      disabled={isLoading}
-                      className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Assign New Driver */}
-            <div className="mt-4 space-y-3">
-              <div>
-                <Label htmlFor="driver-select" className="text-xs font-medium text-slate-700">
-                  Add Driver
-                </Label>
-                <Select value={selectedDriver} onValueChange={setSelectedDriver}>
-                  <SelectTrigger className="mt-2 border-slate-200">
-                    <SelectValue
-                      placeholder={isFetching ? 'Loading drivers...' : 'Select a driver'}
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {drivers.map((driver) => (
-                      <SelectItem key={driver.id} value={driver.id}>
-                        {driver.user.name} ({driver.user.email})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                type="button"
-                onClick={handleAssignDriver}
-                disabled={!selectedDriver || isLoading || isFetching}
-                variant="outline"
-                className="w-full border-slate-200 hover:bg-slate-50"
-              >
-                {isLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-                Assign Driver
-              </Button>
-            </div>
           </div>
-        )}
+        </form>
       </SheetContent>
     </Sheet>
   )
