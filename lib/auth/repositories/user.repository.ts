@@ -1,9 +1,10 @@
-import { User, users as allUsers } from "@/lib/data/users";
+import { db } from "@/lib/db/client";
+import { User, UserRole, UserStatus } from "@prisma/client";
 
 /**
- * User Repository (JSON-based for demo)
- * Handles all database operations for users using the fake JSON DB
- * Follows the Single Responsibility Principle - only data access
+ * User Repository
+ * Handles all database operations for users
+ * Follows the Single Responsibility Principle - only database access
  */
 
 export class UserRepository {
@@ -15,49 +16,80 @@ export class UserRepository {
     password: string;
     name: string;
     phone: string;
-    role: 'driver' | 'manager' | 'admin' | 'super_admin';
+    role: UserRole;
   }): Promise<User> {
-    const newUser: User = {
-      id: String(Math.max(...allUsers.map(u => parseInt(u.id) || 0)) + 1),
-      email: data.email.toLowerCase(),
-      password: data.password,
-      name: data.name,
-      phone: data.phone,
-      role: data.role,
-      status: 'active',
-      createdAt: new Date().toISOString().split('T')[0],
-      lastLogin: new Date().toISOString().split('T')[0],
-    };
-    allUsers.push(newUser);
-    return newUser;
+    return db.user.create({
+      data: {
+        email: data.email.toLowerCase(),
+        password: data.password,
+        name: data.name,
+        phone: data.phone,
+        role: data.role,
+        status: UserStatus.ACTIVE,
+      },
+    });
   }
 
   /**
    * Find a user by email address
    */
   async findUserByEmail(email: string): Promise<User | null> {
-    return allUsers.find(u => u.email === email.toLowerCase()) || null;
+    return db.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
   }
 
   /**
    * Find a user by ID
    */
   async findUserById(id: string): Promise<User | null> {
-    return allUsers.find(u => u.id === id) || null;
+    return db.user.findUnique({
+      where: { id },
+    });
   }
 
   /**
    * Find a user by email with all relations
    */
-  async findUserByEmailWithRelations(email: string): Promise<User | null> {
-    return allUsers.find(u => u.email === email.toLowerCase()) || null;
+  async findUserByEmailWithRelations(email: string): Promise<
+    | (User & {
+      driver?: any;
+      createdAuditLogs?: any[];
+    })
+    | null
+  > {
+    return db.user.findUnique({
+      where: { email: email.toLowerCase() },
+      include: {
+        driver: true,
+        createdAuditLogs: {
+          take: 5,
+          orderBy: { createdAt: "desc" },
+        },
+      },
+    });
   }
 
   /**
    * Find a user by ID with all relations
    */
-  async findUserByIdWithRelations(id: string): Promise<User | null> {
-    return allUsers.find(u => u.id === id) || null;
+  async findUserByIdWithRelations(id: string): Promise<
+    | (User & {
+      driver?: any;
+      createdAuditLogs?: any[];
+    })
+    | null
+  > {
+    return db.user.findUnique({
+      where: { id },
+      include: {
+        driver: true,
+        createdAuditLogs: {
+          take: 5,
+          orderBy: { createdAt: "desc" },
+        },
+      },
+    });
   }
 
   /**
@@ -69,52 +101,48 @@ export class UserRepository {
       email: string;
       firstName: string;
       lastName: string;
-      role: 'driver' | 'manager' | 'admin' | 'super_admin';
-      status: 'active' | 'inactive' | 'suspended';
+      role: UserRole;
+      status: UserStatus;
     }>,
   ): Promise<User> {
-    const user = allUsers.find(u => u.id === id);
-    if (!user) throw new Error("User not found");
-
-    if (data.email) user.email = data.email.toLowerCase();
-    if (data.firstName) user.name = data.firstName;
-    if (data.lastName) user.name = data.lastName;
-    if (data.role) user.role = data.role;
-    if (data.status) user.status = data.status;
-
-    return user;
+    return db.user.update({
+      where: { id },
+      data: {
+        ...(data.email && { email: data.email.toLowerCase() }),
+        ...data,
+      },
+    });
   }
 
   /**
    * Update user password
    */
   async updateUserPassword(id: string, hashedPassword: string): Promise<User> {
-    const user = allUsers.find(u => u.id === id);
-    if (!user) throw new Error("User not found");
-
-    user.password = hashedPassword;
-    return user;
+    return db.user.update({
+      where: { id },
+      data: { password: hashedPassword },
+    });
   }
 
   /**
    * Change user status
    */
-  async updateUserStatus(
-    id: string,
-    status: 'active' | 'inactive' | 'suspended',
-  ): Promise<User> {
-    const user = allUsers.find(u => u.id === id);
-    if (!user) throw new Error("User not found");
-
-    user.status = status;
-    return user;
+  async updateUserStatus(id: string, status: UserStatus): Promise<User> {
+    return db.user.update({
+      where: { id },
+      data: { status },
+    });
   }
 
   /**
    * Check if email exists
    */
   async emailExists(email: string): Promise<boolean> {
-    return allUsers.some(u => u.email === email.toLowerCase());
+    const user = await db.user.findUnique({
+      where: { email: email.toLowerCase() },
+      select: { id: true },
+    });
+    return !!user;
   }
 
   /**
@@ -127,46 +155,46 @@ export class UserRepository {
     users: User[];
     total: number;
   }> {
-    const sorted = [...allUsers].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-    const users = sorted.slice(offset, offset + limit);
-    return { users, total: allUsers.length };
+    const [users, total] = await Promise.all([
+      db.user.findMany({
+        take: limit,
+        skip: offset,
+        orderBy: { createdAt: "desc" },
+      }),
+      db.user.count(),
+    ]);
+
+    return { users, total };
   }
 
   /**
    * Get users by role
    */
-  async getUsersByRole(
-    role: 'driver' | 'manager' | 'admin' | 'super_admin',
-  ): Promise<User[]> {
-    return allUsers
-      .filter(u => u.role === role)
-      .sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
+  async getUsersByRole(role: UserRole): Promise<User[]> {
+    return db.user.findMany({
+      where: { role },
+      orderBy: { createdAt: "desc" },
+    });
   }
 
   /**
    * Get active users
    */
   async getActiveUsers(): Promise<User[]> {
-    return allUsers
-      .filter(u => u.status === 'active')
-      .sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
+    return db.user.findMany({
+      where: { status: UserStatus.ACTIVE },
+      orderBy: { createdAt: "desc" },
+    });
   }
 
   /**
    * Delete a user (soft delete via status)
    */
   async deleteUser(id: string): Promise<User> {
-    const user = allUsers.find(u => u.id === id);
-    if (!user) throw new Error("User not found");
-
-    user.status = 'inactive';
-    return user;
+    return db.user.update({
+      where: { id },
+      data: { status: UserStatus.INACTIVE },
+    });
   }
 }
 
