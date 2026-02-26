@@ -54,7 +54,7 @@ export default function ProfilePage() {
   });
   const [notifs, setNotifs] = useState({
     email: true,
-    sms: user?.role === "driver",
+    sms: user?.role === "DRIVER",
   });
 
   const save = () => {
@@ -308,7 +308,7 @@ export default function ProfilePage() {
                   key: "sms",
                   label: "SMS Notifications",
                   desc: "Receive SMS alerts for urgent matters (drivers only)",
-                  disabled: user?.role !== "driver",
+                  disabled: user?.role !== "DRIVER",
                 },
               ].map((item) => (
                 <div
@@ -349,25 +349,25 @@ export default function ProfilePage() {
               <FormField
                 label="Company Name"
                 value="TransitHub Inc."
-                onChange={() => {}}
+                onChange={() => { }}
                 readOnly
               />
               <FormField
                 label="Industry"
                 value="Transportation & Logistics"
-                onChange={() => {}}
+                onChange={() => { }}
                 readOnly
               />
               <FormField
                 label="Support"
                 value="support@transithub.com"
-                onChange={() => {}}
+                onChange={() => { }}
                 readOnly
               />
               <FormField
                 label="Country"
                 value="Morocco"
-                onChange={() => {}}
+                onChange={() => { }}
                 readOnly
               />
             </CardContent>

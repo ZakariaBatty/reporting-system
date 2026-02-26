@@ -1,79 +1,79 @@
-'use client'
+"use client";
 
-import React, { useEffect, useState } from 'react'
-import { X } from 'lucide-react'
-import { FormField } from '@/components/FormField'
-import { Button } from '@/components/ui/button'
+import React, { useEffect, useState } from "react";
+import { X } from "lucide-react";
+import { FormField } from "@/components/FormField";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Agency {
-  id: string
-  name: string
+  id: string;
+  name: string;
 }
 
 interface Hotel {
-  id: string
-  name: string
-  city: string
+  id: string;
+  name: string;
+  city: string;
 }
 
 interface Driver {
-  id: string
+  id: string;
   user: {
-    id: string
-    name: string
-    email: string
-  }
+    id: string;
+    name: string;
+    email: string;
+  };
 }
 
 interface Vehicle {
-  id: string
-  plate: string
-  model: string
-  status: string
+  id: string;
+  plate: string;
+  model: string;
+  status: string;
 }
 
 interface Trip {
-  id: string
-  tripDate: string | Date
-  departureTime: string
-  estimatedArrivalTime?: string | null
-  pickupLocation: string
-  dropoffLocation: string
-  destination: string
-  type: 'OUT' | 'IN'
-  status: string
-  passengersCount: number
-  kmStart: number
-  kmEnd?: number | null
-  distanceTravelled?: number | null
-  tripPrice?: number | null
-  actualCost?: number | null
-  notes?: string | null
-  agencyId: string
-  hotelId: string
-  vehicleId: string
-  driverId: string
+  id: string;
+  tripDate: string | Date;
+  departureTime: string;
+  estimatedArrivalTime?: string | null;
+  pickupLocation: string;
+  dropoffLocation: string;
+  destination: string;
+  type: "OUT" | "IN";
+  status: string;
+  passengersCount: number;
+  kmStart: number;
+  kmEnd?: number | null;
+  distanceTravelled?: number | null;
+  tripPrice?: number | null;
+  actualCost?: number | null;
+  notes?: string | null;
+  agencyId: string;
+  hotelId: string;
+  vehicleId: string;
+  driverId: string;
 }
 
 interface TripsFormDrawerProps {
-  isOpen: boolean
-  onClose: () => void
-  trip?: Trip | null
-  agencies: Agency[]
-  hotels: Hotel[]
-  drivers: Driver[]
-  vehicles: Vehicle[]
-  userRole: string
-  onSubmit: (data: any) => Promise<void>
-  isLoading: boolean
+  isOpen: boolean;
+  onClose: () => void;
+  trip?: Trip | null;
+  agencies: Agency[];
+  hotels: Hotel[];
+  drivers: Driver[];
+  vehicles: Vehicle[];
+  userRole: string;
+  onSubmit: (data: any) => Promise<void>;
+  isLoading: boolean;
 }
 
 export function TripsFormDrawer({
@@ -89,38 +89,38 @@ export function TripsFormDrawer({
   isLoading,
 }: TripsFormDrawerProps) {
   const [form, setForm] = useState<any>({
-    tripDate: '',
-    departureTime: '',
-    estimatedArrivalTime: '',
-    pickupLocation: '',
-    dropoffLocation: '',
-    destination: '',
-    type: 'OUT',
-    status: 'SCHEDULED',
-    passengersCount: '',
-    kmStart: '',
-    kmEnd: '',
-    distanceTravelled: '',
-    tripPrice: '',
-    actualCost: '',
-    notes: '',
-    agencyId: '',
-    hotelId: '',
-    vehicleId: '',
-    driverId: '',
-  })
+    tripDate: "",
+    departureTime: "",
+    estimatedArrivalTime: "",
+    pickupLocation: "",
+    dropoffLocation: "",
+    destination: "",
+    type: "OUT",
+    status: "SCHEDULED",
+    passengersCount: "",
+    kmStart: "",
+    kmEnd: "",
+    distanceTravelled: "",
+    tripPrice: "",
+    actualCost: "",
+    notes: "",
+    agencyId: "",
+    hotelId: "",
+    vehicleId: "",
+    driverId: "",
+  });
 
-  const isDriver = userRole === 'driver'
-  const isEditMode = !!trip
+  const isDriver = userRole === "DRIVER";
+  const isEditMode = !!trip;
 
   // Populate form when trip is set
   useEffect(() => {
     if (trip) {
-      const tripDate = new Date(trip.tripDate)
+      const tripDate = new Date(trip.tripDate);
       setForm({
-        tripDate: tripDate.toISOString().split('T')[0],
+        tripDate: tripDate.toISOString().split("T")[0],
         departureTime: trip.departureTime,
-        estimatedArrivalTime: trip.estimatedArrivalTime || '',
+        estimatedArrivalTime: trip.estimatedArrivalTime || "",
         pickupLocation: trip.pickupLocation,
         dropoffLocation: trip.dropoffLocation,
         destination: trip.destination,
@@ -128,51 +128,61 @@ export function TripsFormDrawer({
         status: trip.status,
         passengersCount: trip.passengersCount.toString(),
         kmStart: trip.kmStart.toString(),
-        kmEnd: trip.kmEnd?.toString() || '',
-        distanceTravelled: trip.distanceTravelled?.toString() || '',
-        tripPrice: trip.tripPrice?.toString() || '',
-        actualCost: trip.actualCost?.toString() || '',
-        notes: trip.notes || '',
+        kmEnd: trip.kmEnd?.toString() || "",
+        distanceTravelled: trip.distanceTravelled?.toString() || "",
+        tripPrice: trip.tripPrice?.toString() || "",
+        actualCost: trip.actualCost?.toString() || "",
+        notes: trip.notes || "",
         agencyId: trip.agencyId,
         hotelId: trip.hotelId,
         vehicleId: trip.vehicleId,
         driverId: trip.driverId,
-      })
+      });
     } else {
       // Reset form for create
       setForm({
-        tripDate: '',
-        departureTime: '',
-        estimatedArrivalTime: '',
-        pickupLocation: '',
-        dropoffLocation: '',
-        destination: '',
-        type: 'OUT',
-        status: 'SCHEDULED',
-        passengersCount: '',
-        kmStart: '',
-        kmEnd: '',
-        distanceTravelled: '',
-        tripPrice: '',
-        actualCost: '',
-        notes: '',
-        agencyId: '',
-        hotelId: '',
-        vehicleId: '',
-        driverId: '',
-      })
+        tripDate: "",
+        departureTime: "",
+        estimatedArrivalTime: "",
+        pickupLocation: "",
+        dropoffLocation: "",
+        destination: "",
+        type: "OUT",
+        status: "SCHEDULED",
+        passengersCount: "",
+        kmStart: "",
+        kmEnd: "",
+        distanceTravelled: "",
+        tripPrice: "",
+        actualCost: "",
+        notes: "",
+        agencyId: "",
+        hotelId: "",
+        vehicleId: "",
+        driverId: "",
+      });
     }
-  }, [trip, isOpen])
+  }, [trip, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     // Basic validation
-    if (!form.tripDate || !form.departureTime || !form.agencyId || !form.hotelId ||
-        !form.vehicleId || !form.passengersCount || form.passengersCount < 0 ||
-        !form.kmStart || form.kmStart < 0 || !form.pickupLocation || !form.destination) {
-      alert('Please fill in all required fields')
-      return
+    if (
+      !form.tripDate ||
+      !form.departureTime ||
+      !form.agencyId ||
+      !form.hotelId ||
+      !form.vehicleId ||
+      !form.passengersCount ||
+      form.passengersCount < 0 ||
+      !form.kmStart ||
+      form.kmStart < 0 ||
+      !form.pickupLocation ||
+      !form.destination
+    ) {
+      alert("Please fill in all required fields");
+      return;
     }
 
     try {
@@ -181,34 +191,36 @@ export function TripsFormDrawer({
         passengersCount: parseInt(form.passengersCount),
         kmStart: parseInt(form.kmStart),
         kmEnd: form.kmEnd ? parseInt(form.kmEnd) : undefined,
-        distanceTravelled: form.distanceTravelled ? parseInt(form.distanceTravelled) : undefined,
+        distanceTravelled: form.distanceTravelled
+          ? parseInt(form.distanceTravelled)
+          : undefined,
         tripPrice: form.tripPrice ? parseFloat(form.tripPrice) : undefined,
         actualCost: form.actualCost ? parseFloat(form.actualCost) : undefined,
-      })
-      onClose()
+      });
+      onClose();
     } catch (error) {
-      console.error('Form submission error:', error)
+      console.error("Form submission error:", error);
     }
-  }
+  };
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex">
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/50"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
 
       {/* Drawer */}
       <div className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-lg flex flex-col z-50">
         {/* Header */}
         <div className="flex items-center justify-between border-b px-6 py-4">
           <h2 className="text-lg font-semibold">
-            {isEditMode ? 'Edit Trip' : 'Create New Trip'}
+            {isEditMode ? "Edit Trip" : "Create New Trip"}
           </h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -262,8 +274,13 @@ export function TripsFormDrawer({
 
             {/* Agency & Hotel */}
             <div>
-              <label className="block text-sm font-medium mb-1.5">Agency*</label>
-              <Select value={form.agencyId} onValueChange={(v) => setForm({ ...form, agencyId: v })}>
+              <label className="block text-sm font-medium mb-1.5">
+                Agency*
+              </label>
+              <Select
+                value={form.agencyId}
+                onValueChange={(v) => setForm({ ...form, agencyId: v })}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select agency" />
                 </SelectTrigger>
@@ -279,7 +296,10 @@ export function TripsFormDrawer({
 
             <div>
               <label className="block text-sm font-medium mb-1.5">Hotel*</label>
-              <Select value={form.hotelId} onValueChange={(v) => setForm({ ...form, hotelId: v })}>
+              <Select
+                value={form.hotelId}
+                onValueChange={(v) => setForm({ ...form, hotelId: v })}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select hotel" />
                 </SelectTrigger>
@@ -295,8 +315,13 @@ export function TripsFormDrawer({
 
             {/* Vehicle */}
             <div>
-              <label className="block text-sm font-medium mb-1.5">Vehicle*</label>
-              <Select value={form.vehicleId} onValueChange={(v) => setForm({ ...form, vehicleId: v })}>
+              <label className="block text-sm font-medium mb-1.5">
+                Vehicle*
+              </label>
+              <Select
+                value={form.vehicleId}
+                onValueChange={(v) => setForm({ ...form, vehicleId: v })}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select vehicle" />
                 </SelectTrigger>
@@ -313,8 +338,13 @@ export function TripsFormDrawer({
             {/* Driver - Only show for non-drivers */}
             {!isDriver && (
               <div>
-                <label className="block text-sm font-medium mb-1.5">Assign Driver*</label>
-                <Select value={form.driverId} onValueChange={(v) => setForm({ ...form, driverId: v })}>
+                <label className="block text-sm font-medium mb-1.5">
+                  Assign Driver*
+                </label>
+                <Select
+                  value={form.driverId}
+                  onValueChange={(v) => setForm({ ...form, driverId: v })}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select driver" />
                   </SelectTrigger>
@@ -331,8 +361,13 @@ export function TripsFormDrawer({
 
             {/* Trip Type */}
             <div>
-              <label className="block text-sm font-medium mb-1.5">Trip Type*</label>
-              <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
+              <label className="block text-sm font-medium mb-1.5">
+                Trip Type*
+              </label>
+              <Select
+                value={form.type}
+                onValueChange={(v) => setForm({ ...form, type: v })}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -351,7 +386,6 @@ export function TripsFormDrawer({
                 onChange={(v) => setForm({ ...form, passengersCount: v })}
                 type="number"
                 placeholder="0"
-                min="0"
               />
               <FormField
                 label="Start KM*"
@@ -359,7 +393,6 @@ export function TripsFormDrawer({
                 onChange={(v) => setForm({ ...form, kmStart: v })}
                 type="number"
                 placeholder="0"
-                min="0"
               />
             </div>
 
@@ -371,7 +404,6 @@ export function TripsFormDrawer({
                 onChange={(v) => setForm({ ...form, kmEnd: v })}
                 type="number"
                 placeholder="0"
-                min="0"
               />
               <FormField
                 label="Distance Travelled"
@@ -379,15 +411,19 @@ export function TripsFormDrawer({
                 onChange={(v) => setForm({ ...form, distanceTravelled: v })}
                 type="number"
                 placeholder="0"
-                min="0"
               />
             </div>
 
             {/* Status - Only for admin/manager */}
             {!isDriver && (
               <div>
-                <label className="block text-sm font-medium mb-1.5">Status</label>
-                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                <label className="block text-sm font-medium mb-1.5">
+                  Status
+                </label>
+                <Select
+                  value={form.status}
+                  onValueChange={(v) => setForm({ ...form, status: v })}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -411,8 +447,6 @@ export function TripsFormDrawer({
                   onChange={(v) => setForm({ ...form, tripPrice: v })}
                   type="number"
                   placeholder="0.00"
-                  step="0.01"
-                  min="0"
                 />
                 <FormField
                   label="Actual Cost"
@@ -420,8 +454,6 @@ export function TripsFormDrawer({
                   onChange={(v) => setForm({ ...form, actualCost: v })}
                   type="number"
                   placeholder="0.00"
-                  step="0.01"
-                  min="0"
                 />
               </div>
             )}
@@ -446,7 +478,7 @@ export function TripsFormDrawer({
             disabled={isLoading}
             className="flex-1"
           >
-            {isLoading ? 'Saving...' : 'Save Trip'}
+            {isLoading ? "Saving..." : "Save Trip"}
           </Button>
           <Button
             onClick={onClose}
@@ -459,5 +491,5 @@ export function TripsFormDrawer({
         </div>
       </div>
     </div>
-  )
+  );
 }

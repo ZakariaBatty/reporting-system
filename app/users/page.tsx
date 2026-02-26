@@ -48,13 +48,13 @@ export default function UsersPage() {
     name: "",
     email: "",
     phone: "",
-    role: "driver",
+    role: "DRIVER",
     status: "active",
     department: "",
   });
 
   const canManage =
-    currentUser?.role === "admin" || currentUser?.role === "super_admin";
+    currentUser?.role === "ADMIN" || currentUser?.role === "SUPER_ADMIN";
 
   const filtered = useMemo(
     () =>
@@ -78,7 +78,7 @@ export default function UsersPage() {
       name: "",
       email: "",
       phone: "",
-      role: "driver",
+      role: "DRIVER",
       status: "active",
       department: "",
     });
@@ -161,7 +161,7 @@ export default function UsersPage() {
         />
         <StatCard
           label="Drivers"
-          value={userList.filter((u) => u.role === "driver").length}
+          value={userList.filter((u) => u.role === "DRIVER").length}
           icon={Car}
           variant="accent"
         />
@@ -169,7 +169,7 @@ export default function UsersPage() {
           label="Admins"
           value={
             userList.filter(
-              (u) => u.role === "admin" || u.role === "super_admin",
+              (u) => u.role === "ADMIN" || u.role === "SUPER_ADMIN",
             ).length
           }
           icon={Shield}
@@ -198,10 +198,10 @@ export default function UsersPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Roles</SelectItem>
-              <SelectItem value="driver">Driver</SelectItem>
-              <SelectItem value="manager">Manager</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="super_admin">Super Admin</SelectItem>
+              <SelectItem value="DRIVER">Driver</SelectItem>
+              <SelectItem value="MANAGER">Manager</SelectItem>
+              <SelectItem value="ADMIN">Admin</SelectItem>
+              <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
             </SelectContent>
           </Select>
           <Select
@@ -350,14 +350,14 @@ export default function UsersPage() {
         />
         <FormField
           label="Role"
-          value={form.role ?? "driver"}
+          value={form.role ?? "DRIVER"}
           onChange={(v) => setForm({ ...form, role: v as UserRole })}
           as="select"
           options={[
-            { value: "driver", label: "Driver" },
-            { value: "manager", label: "Manager" },
-            { value: "admin", label: "Admin" },
-            { value: "super_admin", label: "Super Admin" },
+            { value: "DRIVER", label: "Driver" },
+            { value: "MANAGER", label: "Manager" },
+            { value: "ADMIN", label: "Admin" },
+            { value: "SUPER_ADMIN", label: "Super Admin" },
           ]}
         />
         <FormField

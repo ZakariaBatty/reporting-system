@@ -1,58 +1,53 @@
-'use client'
+"use client";
 
-import React from 'react'
-import {
-  Trash2,
-  Edit2,
-  MapPin,
-  Clock,
-  Users,
-} from 'lucide-react'
-import { TripStatusBadge, TripTypeBadge } from '@/components/shared'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import React from "react";
+import { Trash2, Edit2, MapPin, Clock, Users } from "lucide-react";
+import { TripStatusBadge, TripTypeBadge } from "@/components/shared";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { TripStatus } from "@/lib/data";
 
 interface Trip {
-  id: string
-  tripDate: string | Date
-  departureTime: string
-  pickupLocation: string
-  dropoffLocation: string
-  destination: string
+  id: string;
+  tripDate: string | Date;
+  departureTime: string;
+  pickupLocation: string;
+  dropoffLocation: string;
+  destination: string;
   driver: {
     user: {
-      id: string
-      name: string
-      email: string
-    }
-  }
+      id: string;
+      name: string;
+      email: string;
+    };
+  };
   vehicle: {
-    id: string
-    plate: string
-    model: string
-  }
+    id: string;
+    plate: string;
+    model: string;
+  };
   agency: {
-    id: string
-    name: string
-  }
+    id: string;
+    name: string;
+  };
   hotel: {
-    id: string
-    name: string
-  }
-  passengersCount: number
-  kmStart: number
-  kmEnd?: number | null
-  type: 'OUT' | 'IN'
-  status: string
+    id: string;
+    name: string;
+  };
+  passengersCount: number;
+  kmStart: number;
+  kmEnd?: number | null;
+  type: "OUT" | "IN";
+  status: TripStatus;
 }
 
 interface TripsListProps {
-  trips: Trip[]
-  userRole: string
-  userId: string
-  onEdit: (trip: Trip) => void
-  onDelete: (tripId: string) => void
-  isDeleting: boolean
+  trips: Trip[];
+  userRole: string;
+  userId: string;
+  onEdit: (trip: Trip) => void;
+  onDelete: (tripId: string) => void;
+  isDeleting: boolean;
 }
 
 export function TripsList({
@@ -63,16 +58,18 @@ export function TripsList({
   onDelete,
   isDeleting,
 }: TripsListProps) {
-  const canDelete = ['manager', 'admin', 'super_admin'].includes(userRole)
-  const canEdit = userRole === 'driver' || ['manager', 'admin', 'super_admin'].includes(userRole)
+  const canDelete = ["MANAGER", "ADMIN", "SUPER_ADMIN"].includes(userRole);
+  const canEdit =
+    userRole === "DRIVER" ||
+    ["MANAGER", "ADMIN", "SUPER_ADMIN"].includes(userRole);
 
   const canEditTrip = (trip: Trip) => {
-    if (!canEdit) return false
-    if (userRole === 'driver') {
-      return trip.driver.user.id === userId
+    if (!canEdit) return false;
+    if (userRole === "DRIVER") {
+      return trip.driver.user.id === userId;
     }
-    return true
-  }
+    return true;
+  };
 
   if (trips.length === 0) {
     return (
@@ -84,7 +81,7 @@ export function TripsList({
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -97,42 +94,57 @@ export function TripsList({
               <th className="whitespace-nowrap px-4 py-3 text-left">Time</th>
               <th className="whitespace-nowrap px-4 py-3 text-left">Agency</th>
               <th className="whitespace-nowrap px-4 py-3 text-left">Hotel</th>
-              <th className="whitespace-nowrap px-4 py-3 text-left">Destination</th>
+              <th className="whitespace-nowrap px-4 py-3 text-left">
+                Destination
+              </th>
               <th className="whitespace-nowrap px-4 py-3 text-left">Driver</th>
               <th className="whitespace-nowrap px-4 py-3 text-left">PAX</th>
-              <th className="whitespace-nowrap px-4 py-3 text-left">Distance</th>
+              <th className="whitespace-nowrap px-4 py-3 text-left">
+                Distance
+              </th>
               <th className="whitespace-nowrap px-4 py-3 text-left">Type</th>
               <th className="whitespace-nowrap px-4 py-3 text-left">Status</th>
-              <th className="whitespace-nowrap px-4 py-3 text-center">Actions</th>
+              <th className="whitespace-nowrap px-4 py-3 text-center">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {trips.map((trip) => {
-              const tripDate = new Date(trip.tripDate)
-              const formattedDate = tripDate.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })
+              const tripDate = new Date(trip.tripDate);
+              const formattedDate = tripDate.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              });
 
               const distance =
                 trip.kmEnd && trip.kmStart
                   ? `${trip.kmEnd - trip.kmStart} km`
-                  : `${trip.kmStart} km`
+                  : `${trip.kmStart} km`;
 
               return (
-                <tr key={trip.id} className="transition-colors hover:bg-muted/30">
+                <tr
+                  key={trip.id}
+                  className="transition-colors hover:bg-muted/30"
+                >
                   <td className="px-4 py-3 font-mono text-xs whitespace-nowrap">
                     {formattedDate}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs font-bold whitespace-nowrap">
                     {trip.departureTime}
                   </td>
-                  <td className="px-4 py-3 font-semibold">{trip.agency.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{trip.hotel.name}</td>
+                  <td className="px-4 py-3 font-semibold">
+                    {trip.agency.name}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {trip.hotel.name}
+                  </td>
                   <td className="px-4 py-3 font-medium">{trip.destination}</td>
                   <td className="px-4 py-3">{trip.driver.user.name}</td>
-                  <td className="px-4 py-3 font-mono text-center">{trip.passengersCount}</td>
+                  <td className="px-4 py-3 font-mono text-center">
+                    {trip.passengersCount}
+                  </td>
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                     {distance}
                   </td>
@@ -171,11 +183,11 @@ export function TripsList({
                     </div>
                   </td>
                 </tr>
-              )
+              );
             })}
           </tbody>
         </table>
       </CardContent>
     </Card>
-  )
+  );
 }

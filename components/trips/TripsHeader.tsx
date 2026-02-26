@@ -1,6 +1,6 @@
-'use client'
+"use client";
 
-import React from 'react'
+import React from "react";
 import {
   Plus,
   Search,
@@ -8,39 +8,39 @@ import {
   CheckCircle,
   Activity,
   Users,
-} from 'lucide-react'
-import { StatCard, PageHeader } from '@/components/shared'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+} from "lucide-react";
+import { StatCard, PageHeader } from "@/components/shared";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from "@/components/ui/select";
 
 interface TripStats {
-  totalTrips: number
-  completedTrips: number
-  inProgressTrips: number
-  scheduledTrips: number
+  totalTrips: number;
+  completedTrips: number;
+  inProgressTrips: number;
+  scheduledTrips: number;
 }
 
 interface TripsHeaderProps {
-  stats: TripStats | null
-  totalPassengers: number | null
-  isLoading: boolean
-  search: string
-  onSearchChange: (value: string) => void
-  statusFilter: string
-  onStatusFilterChange: (value: string) => void
-  agencyFilter: string
-  onAgencyFilterChange: (value: string) => void
-  agencies: Array<{ id: string; name: string }>
-  onCreateNew: () => void
-  userRole: string
+  stats: TripStats | null;
+  totalPassengers: number | null;
+  isLoading: boolean;
+  search: string;
+  onSearchChange: (value: string) => void;
+  statusFilter: string;
+  onStatusFilterChange: (value: string) => void;
+  agencyFilter: string;
+  onAgencyFilterChange: (value: string) => void;
+  agencies: Array<{ id: string; name: string }>;
+  onCreateNew: () => void;
+  userRole: string;
 }
 
 export function TripsHeader({
@@ -110,7 +110,11 @@ export function TripsHeader({
               disabled={isLoading}
             />
           </div>
-          <Select value={statusFilter} onValueChange={onStatusFilterChange} disabled={isLoading}>
+          <Select
+            value={statusFilter}
+            onValueChange={onStatusFilterChange}
+            disabled={isLoading}
+          >
             <SelectTrigger className="h-9 w-40 text-sm">
               <SelectValue />
             </SelectTrigger>
@@ -125,8 +129,12 @@ export function TripsHeader({
           </Select>
 
           {/* Only show agency filter for non-drivers */}
-          {userRole !== 'driver' && (
-            <Select value={agencyFilter} onValueChange={onAgencyFilterChange} disabled={isLoading}>
+          {userRole !== "DRIVER" && (
+            <Select
+              value={agencyFilter}
+              onValueChange={onAgencyFilterChange}
+              disabled={isLoading}
+            >
               <SelectTrigger className="h-9 w-44 text-sm">
                 <SelectValue />
               </SelectTrigger>
@@ -143,5 +151,5 @@ export function TripsHeader({
         </CardContent>
       </Card>
     </>
-  )
+  );
 }
