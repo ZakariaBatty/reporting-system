@@ -7,7 +7,7 @@ export const { auth } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
 
   session: { strategy: "jwt" },
-  pages: { signIn: "/login" },
+  pages: { signIn: "/auth/login" },
 });
 
 export default auth;
