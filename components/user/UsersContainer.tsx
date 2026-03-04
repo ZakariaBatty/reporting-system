@@ -25,7 +25,7 @@ import { Search } from "lucide-react";
 interface UsersContainerProps {}
 
 export function UsersContainer({}: UsersContainerProps) {
-  const [users, setUsers] = useState<(User & { driver?: any })[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeUsers: 0,
@@ -37,12 +37,8 @@ export function UsersContainer({}: UsersContainerProps) {
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<
-    (User & { driver?: any }) | null
-  >(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<
-    (User & { driver?: any }) | null
-  >(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<User | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   // Load users and statistics
@@ -86,7 +82,7 @@ export function UsersContainer({}: UsersContainerProps) {
     setDrawerOpen(true);
   };
 
-  const handleEdit = (user: User & { driver?: any }) => {
+  const handleEdit = (user: User) => {
     setSelectedUser(user);
     setDrawerOpen(true);
   };

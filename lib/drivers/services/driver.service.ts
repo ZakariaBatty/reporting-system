@@ -5,6 +5,12 @@ import { driverRepository } from "../repositories/driver.repository";
  * Driver Service
  * Contains business logic with role-based authorization
  * All CRUD operations are protected by role checks
+ *
+ * Responsibilities:
+ * - Driver lifecycle management (create, update, delete)
+ * - Handle role changes (USER → DRIVER, DRIVER → OTHER)
+ * - Authorization checks for driver operations
+ * - Driver queries and statistics
  */
 
 interface DriverUpdateData {
@@ -18,6 +24,85 @@ interface DriverUpdateData {
 }
 
 export const driverService = {
+  /**
+   * LIFECYCLE OPERATIONS
+   * Moved from User domain to Driver domain
+   */
+
+  /**
+   * Create a driver profile for a user
+   * Called when: User is created with DRIVER role OR user role changes to DRIVER
+   */
+  async createDriverProfile(
+    userId: string,
+    options?: { licenseNumber?: string; licenseExpiry?: Date },
+  ) {
+    // Check if driver already exists
+    const existingDriver = await driverRepository.findDriverByUserId(userId);
+    if (existingDriver) {
+      throw new Error("Driver profile already exists for this user");
+    }
+
+    // Default license expiry: 1 year from now
+    const licenseExpiry = options?.licenseExpiry || new Date();
+    if (!options?.licenseExpiry) {
+      licenseExpiry.setFullYear(licenseExpiry.getFullYear() + 1);
+    }
+
+    return driverRepository.createDriver({
+      userId,
+      licenseNumber:
+        options?.licenseNumber ||
+        `DL-${userId.substring(0, 8).toUpperCase()}`,
+      licenseExpiry,
+      status: "AVAILABLE",
+    });
+  },
+
+  /**
+   * Handle role change TO DRIVER role
+   * Creates driver profile if not exists
+   */
+  async handleRoleChangeToDriver(userId: string) {
+    const existingDriver = await driverRepository.findDriverByUserId(userId);
+
+    if (!existingDriver) {
+      // Create new driver profile
+      return this.createDriverProfile(userId);
+    }
+
+    return existingDriver;
+  },
+
+  /**
+   * Handle role change FROM DRIVER role
+   * Soft-deletes the driver profile
+   */
+  async handleRoleChangeFromDriver(userId: string) {
+    const driver = await driverRepository.findDriverByUserId(userId);
+
+    if (driver) {
+      // Soft delete the driver profile
+      return driverRepository.deleteDriver(driver.id);
+    }
+  },
+
+  /**
+   * Delete driver profile for a user
+   * Called when user is deleted
+   */
+  async deleteDriverProfile(userId: string) {
+    const driver = await driverRepository.findDriverByUserId(userId);
+
+    if (driver) {
+      return driverRepository.deleteDriver(driver.id);
+    }
+  },
+
+  /**
+   * QUERY OPERATIONS
+   */
+
   /**
    * Get drivers for a user based on their role
    */
@@ -52,6 +137,10 @@ export const driverService = {
 
     return driver;
   },
+
+  /**
+   * UPDATE OPERATIONS
+   */
 
   /**
    * Update a driver profile (Manager/Admin only or own profile for drivers)
@@ -113,6 +202,10 @@ export const driverService = {
   },
 
   /**
+   * DELETE OPERATIONS
+   */
+
+  /**
    * Delete a driver (Manager/Admin only)
    */
   async deleteDriver(driverId: string, userRole: string) {
@@ -128,6 +221,10 @@ export const driverService = {
 
     return driverRepository.deleteDriver(driverId);
   },
+
+  /**
+   * UTILITY OPERATIONS
+   */
 
   /**
    * Check if a user can access a specific driver

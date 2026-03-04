@@ -224,4 +224,64 @@ export const driverRepository = {
       orderBy: { licenseExpiry: "asc" },
     });
   },
+
+  /**
+   * Find a user with their driver profile (explicit cross-domain query)
+   * Use this when you need both user and driver data together
+   */
+  async findUserWithDriver(userId: string) {
+    return prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        permissions: true,
+        driver: {
+          include: {
+            vehicleAssignments: {
+              where: { isActive: true },
+              include: {
+                vehicle: {
+                  select: {
+                    id: true,
+                    plate: true,
+                    model: true,
+                    capacity: true,
+                    status: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+  },
+
+  /**
+   * Find multiple users with their driver profiles (explicit cross-domain query)
+   */
+  async findUsersWithDrivers(userIds: string[]) {
+    return prisma.user.findMany({
+      where: { id: { in: userIds } },
+      include: {
+        permissions: true,
+        driver: {
+          include: {
+            vehicleAssignments: {
+              where: { isActive: true },
+              include: {
+                vehicle: {
+                  select: {
+                    id: true,
+                    plate: true,
+                    model: true,
+                    capacity: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+  },
 };

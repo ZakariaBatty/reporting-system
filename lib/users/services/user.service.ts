@@ -1,7 +1,23 @@
 import { prisma } from "@/lib/db/client";
 import { userRepository } from "../repositories/user.repository";
+import { driverService } from "@/lib/drivers/services/driver.service";
 
 import { UserRole, UserStatus } from "@prisma/client";
+
+/**
+ * User Service
+ * Handles user identity and authentication operations only
+ *
+ * Responsibilities:
+ * - User authentication
+ * - Account data management
+ * - Role assignment
+ * - User profile operations
+ *
+ * NOT Responsible:
+ * - Driver lifecycle (moved to driverService)
+ * - Driver operations (moved to driverService)
+ */
 
 export const userService = {
   async getAllUsers() {
@@ -40,23 +56,17 @@ export const userService = {
       throw new Error("Phone number already exists");
     }
 
-    // Create user
+    // Create user (User domain responsibility)
     const user = await userRepository.create(data);
 
-    // If role is DRIVER, create Driver record
+    // Handle driver profile creation (Driver domain responsibility)
     if (data.role === "DRIVER") {
-      // Set default license expiry to 1 year from now
-      const licenseExpiry = new Date();
-      licenseExpiry.setFullYear(licenseExpiry.getFullYear() + 1);
-
-      await prisma.driver.create({
-        data: {
-          userId: user.id,
-          licenseNumber: `DL-${user.id.substring(0, 8).toUpperCase()}`,
-          licenseExpiry,
-          status: "AVAILABLE",
-        },
-      });
+      try {
+        await driverService.createDriverProfile(user.id);
+      } catch (error) {
+        // Log error but don't fail user creation
+        console.error("Failed to create driver profile:", error);
+      }
     }
 
     return userRepository.getById(user.id);
@@ -97,30 +107,26 @@ export const userService = {
       }
     }
 
-    // Handle role changes
+    // Handle role changes (Driver domain responsibility)
     if (data.role && data.role !== user.role) {
       if (data.role === "DRIVER") {
-        // Create Driver record if not exists
-        const driverExists = await prisma.driver.findUnique({
-          where: { userId: id },
-        });
-        if (!driverExists) {
-          const licenseExpiry = new Date();
-          licenseExpiry.setFullYear(licenseExpiry.getFullYear() + 1);
-
-          await prisma.driver.create({
-            data: {
-              userId: id,
-              licenseNumber: `DL-${id.substring(0, 8).toUpperCase()}`,
-              licenseExpiry,
-              status: "AVAILABLE",
-            },
-          });
+        // Create driver profile if user role changes to DRIVER
+        try {
+          await driverService.handleRoleChangeToDriver(id);
+        } catch (error) {
+          console.error("Failed to create driver profile on role change:", error);
         }
       } else {
-        // Remove Driver record if role is changed from DRIVER
+        // Remove driver profile if user role changes from DRIVER
         if (user.role === "DRIVER") {
-          await prisma.driver.deleteMany({ where: { userId: id } });
+          try {
+            await driverService.handleRoleChangeFromDriver(id);
+          } catch (error) {
+            console.error(
+              "Failed to delete driver profile on role change:",
+              error,
+            );
+          }
         }
       }
     }
@@ -129,10 +135,14 @@ export const userService = {
   },
 
   async deleteUser(id: string) {
-    // Delete associated Driver record if exists
-    await prisma.driver.deleteMany({ where: { userId: id } });
+    // Delete driver profile if exists (Driver domain responsibility)
+    try {
+      await driverService.deleteDriverProfile(id);
+    } catch (error) {
+      console.error("Failed to delete driver profile:", error);
+    }
 
-    // Delete user (cascades delete other relations)
+    // Delete user (User domain responsibility)
     return userRepository.delete(id);
   },
 

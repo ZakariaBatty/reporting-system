@@ -7,7 +7,7 @@ import { X } from "lucide-react";
 interface UsersFormDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  user: (User & { driver?: any }) | null;
+  user: User | null;
   onSubmit: (data: any) => Promise<void>;
   isLoading?: boolean;
 }

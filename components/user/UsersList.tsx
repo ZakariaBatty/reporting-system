@@ -5,7 +5,7 @@ import { Edit2, Trash2 } from "lucide-react";
 import { RoleBadge, UserStatusBadge } from "@/components/shared";
 
 interface UsersListProps {
-  users: (User & { driver?: any })[];
+  users: User[];
   onEdit: (user: User) => void;
   onDelete: (user: User) => void;
   isLoading?: boolean;

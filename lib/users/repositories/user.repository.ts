@@ -1,10 +1,18 @@
 import { prisma } from "@/lib/db/client";
 import { UserRole, UserStatus } from "@prisma/client";
 
+/**
+ * User Repository
+ * Handles user identity and authentication data only
+ *
+ * NOTE: Does NOT include driver relations
+ * If you need user + driver data, use driverRepository.findUserWithDriver() instead
+ */
+
 export const userRepository = {
   async getAll() {
     return prisma.user.findMany({
-      include: { driver: true, permissions: true },
+      include: { permissions: true },
       orderBy: { createdAt: "desc" },
     });
   },
@@ -12,14 +20,14 @@ export const userRepository = {
   async getById(id: string) {
     return prisma.user.findUnique({
       where: { id },
-      include: { driver: true, permissions: true },
+      include: { permissions: true },
     });
   },
 
   async getByEmail(email: string) {
     return prisma.user.findUnique({
       where: { email },
-      include: { driver: true, permissions: true },
+      include: { permissions: true },
     });
   },
 
@@ -44,7 +52,7 @@ export const userRepository = {
         department: data.department,
         avatar: data.avatar,
       },
-      include: { driver: true, permissions: true },
+      include: { permissions: true },
     });
   },
 
@@ -63,7 +71,7 @@ export const userRepository = {
     return prisma.user.update({
       where: { id },
       data,
-      include: { driver: true, permissions: true },
+      include: { permissions: true },
     });
   },
 
@@ -76,7 +84,7 @@ export const userRepository = {
   async getByRole(role: UserRole) {
     return prisma.user.findMany({
       where: { role },
-      include: { driver: true, permissions: true },
+      include: { permissions: true },
       orderBy: { createdAt: "desc" },
     });
   },

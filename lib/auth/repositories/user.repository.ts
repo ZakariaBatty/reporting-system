@@ -49,11 +49,11 @@ export class UserRepository {
   }
 
   /**
-   * Find a user by email with all relations
+   * Find a user by email with audit logs only (no driver data)
+   * If you need user + driver data, use driverRepository.findUserWithDriver()
    */
   async findUserByEmailWithRelations(email: string): Promise<
     | (User & {
-        driver?: any;
         createdAuditLogs?: any[];
       })
     | null
@@ -61,7 +61,6 @@ export class UserRepository {
     return db.user.findUnique({
       where: { email: email.toLowerCase() },
       include: {
-        driver: true,
         createdAuditLogs: {
           take: 5,
           orderBy: { createdAt: "desc" },
@@ -71,11 +70,11 @@ export class UserRepository {
   }
 
   /**
-   * Find a user by ID with all relations
+   * Find a user by ID with audit logs only (no driver data)
+   * If you need user + driver data, use driverRepository.findUserWithDriver()
    */
   async findUserByIdWithRelations(id: string): Promise<
     | (User & {
-        driver?: any;
         createdAuditLogs?: any[];
       })
     | null
@@ -83,7 +82,6 @@ export class UserRepository {
     return db.user.findUnique({
       where: { id },
       include: {
-        driver: true,
         createdAuditLogs: {
           take: 5,
           orderBy: { createdAt: "desc" },
